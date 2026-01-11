@@ -4,9 +4,6 @@ services:
     container_name: go2rtc-frontend
     ports:
       - "3000:80"
-    environment:
-      # Point to your existing go2rtc instance
-      - GO2RTC_API_URL=${GO2RTC_API_URL:-http://10.66.66.4:1984}
-      # Base64 encoded credentials - generate with: echo -n "username:password" | base64
-      - GO2RTC_AUTH=${GO2RTC_AUTH:-}
+    env_file:
+      - .env
     restart: unless-stopped

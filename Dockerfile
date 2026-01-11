@@ -18,18 +18,21 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine
 
-# Copy nginx template
-COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+# Copy nginx config directly (not as template)
+COPY nginx.conf.template /etc/nginx/conf.d/default.conf
+
+# Copy custom entrypoint
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # Copy built files
 COPY --from=build /app/dist /usr/share/nginx/html
 
 # Default go2rtc backend - override with environment variables
 ENV GO2RTC_API_URL=http://host.docker.internal:1984
-# Base64 encoded username:password - generate with: echo -n "user:pass" | base64
 ENV GO2RTC_AUTH=""
 
 # Expose port
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+ENTRYPOINT ["/docker-entrypoint.sh"]

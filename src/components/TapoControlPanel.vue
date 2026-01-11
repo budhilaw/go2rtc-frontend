@@ -13,9 +13,9 @@ const emit = defineEmits<{
 }>()
 
 // Tapo API config from env or defaults
-const tapoApiUrl = ref(localStorage.getItem('tapoApiUrl') || 'http://localhost:3000')
-const tapoUsername = ref(localStorage.getItem('tapoUsername') || '')
-const tapoPassword = ref(localStorage.getItem('tapoPassword') || '')
+const tapoApiUrl = ref(localStorage.getItem('tapoApiUrl') || process.env.TAPO_API_URL || 'http://localhost:3000')
+const tapoUsername = ref(localStorage.getItem('tapoUsername') || process.env.TAPO_USERNAME || '')
+const tapoPassword = ref(localStorage.getItem('tapoPassword') || process.env.TAPO_PASSWORD || '')
 
 const isConfigured = computed(() => tapoUsername.value && tapoPassword.value)
 

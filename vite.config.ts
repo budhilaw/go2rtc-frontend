@@ -17,6 +17,13 @@ export default defineConfig(({ mode }) => {
         '@': fileURLToPath(new URL('./src', import.meta.url))
       }
     },
+    define: {
+      'process.env': {
+        TAPO_API_URL: process.env.TAPO_API_URL,
+        TAPO_USERNAME: process.env.TAPO_USERNAME,
+        TAPO_PASSWORD: process.env.TAPO_PASSWORD,
+      }
+    },
     server: {
       port: 3000,
       proxy: {

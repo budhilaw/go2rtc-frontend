@@ -68,13 +68,17 @@ const links = computed<StreamLink[]>(() => [
   },
 ])
 
-const colorStyles: Record<string, { bg: string; text: string }> = {
+const colorStyles = {
   purple: { bg: 'var(--accent-primary-muted)', text: 'var(--accent-primary)' },
   green: { bg: 'var(--success-muted)', text: 'var(--success)' },
   orange: { bg: 'var(--warning-muted)', text: 'var(--warning)' },
   blue: { bg: 'var(--info-muted)', text: 'var(--info)' },
   cyan: { bg: 'var(--accent-secondary-muted)', text: 'var(--accent-secondary)' },
   yellow: { bg: 'rgba(234, 179, 8, 0.15)', text: '#eab308' },
+}
+
+function getStyle(color: string) {
+  return colorStyles[color as keyof typeof colorStyles] || colorStyles.purple
 }
 
 async function copyToClipboard(link: StreamLink) {
@@ -143,7 +147,7 @@ function openLink(url: string) {
         <div class="link-header">
           <div 
             class="link-icon"
-            :style="{ background: colorStyles[link.color].bg, color: colorStyles[link.color].text }"
+            :style="{ background: getStyle(link.color).bg, color: getStyle(link.color).text }"
           >
             <Icon :icon="link.icon" />
           </div>

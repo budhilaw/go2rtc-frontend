@@ -28,7 +28,7 @@ const streamSources: StreamSource[] = [
   { id: 'http', name: 'HTTP/HTTPS', icon: 'mdi:web', color: 'purple', description: 'Connect to HTTP streams' },
 ]
 
-const colorStyles: Record<string, { bg: string; text: string; border: string }> = {
+const colorStyles = {
   blue: { bg: 'var(--info-muted)', text: 'var(--info)', border: 'rgba(59, 130, 246, 0.2)' },
   red: { bg: 'var(--danger-muted)', text: 'var(--danger)', border: 'rgba(239, 68, 68, 0.2)' },
   green: { bg: 'var(--success-muted)', text: 'var(--success)', border: 'rgba(34, 197, 94, 0.2)' },
@@ -37,6 +37,10 @@ const colorStyles: Record<string, { bg: string; text: string; border: string }> 
   cyan: { bg: 'var(--accent-secondary-muted)', text: 'var(--accent-secondary)', border: 'rgba(6, 182, 212, 0.2)' },
   yellow: { bg: 'rgba(234, 179, 8, 0.15)', text: '#eab308', border: 'rgba(234, 179, 8, 0.2)' },
   purple: { bg: 'var(--accent-primary-muted)', text: 'var(--accent-primary)', border: 'rgba(139, 92, 246, 0.2)' },
+}
+
+function getStyle(color: string) {
+  return colorStyles[color as keyof typeof colorStyles] || colorStyles.blue
 }
 
 function openModal(source: StreamSource) {
@@ -108,9 +112,9 @@ async function addStream() {
         <div 
           class="source-icon"
           :style="{ 
-            background: colorStyles[source.color].bg, 
-            color: colorStyles[source.color].text,
-            borderColor: colorStyles[source.color].border
+            background: getStyle(source.color).bg, 
+            color: getStyle(source.color).text,
+            borderColor: getStyle(source.color).border
           }"
         >
           <Icon :icon="source.icon" />
@@ -135,8 +139,8 @@ async function addStream() {
                   v-if="selectedSource"
                   class="source-icon small"
                   :style="{ 
-                    background: colorStyles[selectedSource.color].bg, 
-                    color: colorStyles[selectedSource.color].text 
+                    background: getStyle(selectedSource.color).bg, 
+                    color: getStyle(selectedSource.color).text 
                   }"
                 >
                   <Icon :icon="selectedSource.icon" />

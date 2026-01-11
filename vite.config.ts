@@ -26,5 +26,16 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'hls': ['hls.js'],
+            'vendor': ['vue', 'vue-router', 'pinia', '@iconify/vue'],
+          },
+        },
+      },
+      chunkSizeWarningLimit: 600,
+    },
   }
 })

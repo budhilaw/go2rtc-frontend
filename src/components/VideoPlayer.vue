@@ -40,10 +40,7 @@ let hls: Hls | null = null
 
 const modes: PlaybackMode[] = ['webrtc', 'mse', 'hls', 'mjpeg']
 
-const baseUrl = computed(() => {
-  // Use window.location to get the actual host when proxied
-  return ''
-})
+const baseUrl = computed(() => '')
 
 // PTZ Controls
 type PtzCommand = 'left' | 'right' | 'up' | 'down' | 'zoom_in' | 'zoom_out' | 'home'
@@ -109,14 +106,12 @@ async function startWebRTC() {
       }
     }
 
-    // Add transceivers
     pc.addTransceiver('video', { direction: 'recvonly' })
     pc.addTransceiver('audio', { direction: 'recvonly' })
 
     const offer = await pc.createOffer()
     await pc.setLocalDescription(offer)
 
-    // Wait for ICE gathering
     await new Promise<void>((resolve) => {
       if (pc!.iceGatheringState === 'complete') {
         resolve()
@@ -129,7 +124,6 @@ async function startWebRTC() {
       }
     })
 
-    // Send offer to server
     const response = await fetch(`${baseUrl.value}/api/webrtc?src=${encodeURIComponent(props.src)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -174,7 +168,6 @@ async function startMSE() {
 
       ws!.onmessage = (event) => {
         if (typeof event.data === 'string') {
-          // Handle JSON messages
           const msg = JSON.parse(event.data)
           if (msg.type === 'mse') {
             const mimeType = msg.value
@@ -201,7 +194,6 @@ async function startMSE() {
         }
       }
 
-      // Request MSE stream
       ws!.onopen = () => {
         ws!.send(JSON.stringify({ type: 'mse' }))
       }
@@ -266,11 +258,9 @@ function startMJPEG() {
   error.value = null
 
   if (videoRef.value) {
-    // Hide video element for MJPEG
     videoRef.value.style.display = 'none'
   }
 
-  // MJPEG uses an img element
   const img = document.createElement('img')
   img.src = `${baseUrl.value}/api/stream.mjpeg?src=${encodeURIComponent(props.src)}`
   img.style.width = '100%'
@@ -292,32 +282,27 @@ function startMJPEG() {
 }
 
 function stop() {
-  // Clean up WebRTC
   if (pc) {
     pc.close()
     pc = null
   }
 
-  // Clean up WebSocket
   if (ws) {
     ws.close()
     ws = null
   }
 
-  // Clean up HLS
   if (hls) {
     hls.destroy()
     hls = null
   }
 
-  // Clean up video
   if (videoRef.value) {
     videoRef.value.srcObject = null
     videoRef.value.src = ''
     videoRef.value.style.display = ''
   }
 
-  // Remove MJPEG image if exists
   const img = containerRef.value?.querySelector('img')
   if (img) {
     img.remove()
@@ -378,7 +363,6 @@ function setVolume(val: number) {
   }
 }
 
-// Handle mouse movement for controls visibility
 let hideTimeout: number | null = null
 function showControlsHandler() {
   showControls.value = true
@@ -415,14 +399,14 @@ defineExpose({ play, stop, switchMode })
 <template>
   <div 
     ref="containerRef"
-    class="video-container relative bg-black overflow-hidden rounded-xl"
+    class="video-container"
     @mousemove="showControlsHandler"
-    @mouseleave="showControls = false"
+    @mouseleave="showControls = true"
   >
     <!-- Video Element -->
     <video
       ref="videoRef"
-      class="w-full h-full object-contain"
+      class="video-element"
       autoplay
       playsinline
       :muted="isMuted"
@@ -430,25 +414,19 @@ defineExpose({ play, stop, switchMode })
 
     <!-- Loading Overlay -->
     <transition name="fade">
-      <div 
-        v-if="isLoading"
-        class="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm"
-      >
-        <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p class="text-white text-sm">Connecting via {{ currentMode.toUpperCase() }}...</p>
-        <p v-if="connectionState" class="text-gray-400 text-xs mt-1">{{ connectionState }}</p>
+      <div v-if="isLoading" class="video-overlay">
+        <div class="loading-spinner"></div>
+        <p class="overlay-text">Connecting via {{ currentMode.toUpperCase() }}...</p>
+        <p v-if="connectionState" class="overlay-subtext">{{ connectionState }}</p>
       </div>
     </transition>
 
     <!-- Error Overlay -->
     <transition name="fade">
-      <div 
-        v-if="error && !isLoading"
-        class="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm"
-      >
-        <Icon icon="mdi:alert-circle" class="text-red-500 text-5xl mb-4" />
-        <p class="text-white text-lg mb-2">Stream Error</p>
-        <p class="text-gray-400 text-sm mb-4">{{ error }}</p>
+      <div v-if="error && !isLoading" class="video-overlay error">
+        <Icon icon="mdi:alert-circle-outline" class="error-icon" />
+        <p class="overlay-title">Stream Error</p>
+        <p class="overlay-text">{{ error }}</p>
         <button @click="play" class="btn btn-primary">
           <Icon icon="mdi:refresh" />
           Retry
@@ -458,207 +436,333 @@ defineExpose({ play, stop, switchMode })
 
     <!-- PTZ Control Panel -->
     <transition name="fade">
-      <div 
-        v-if="showPtzPanel && isPlaying"
-        class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-auto"
-      >
-        <div class="glass-card p-3 rounded-xl">
-          <div class="grid grid-cols-3 gap-1 mb-2">
-            <!-- Top row -->
+      <div v-if="showPtzPanel && isPlaying" class="ptz-overlay">
+        <div class="ptz-panel">
+          <div class="ptz-grid">
             <div></div>
             <button 
-              @mousedown="startPtz('up')"
-              @mouseup="stopPtz"
-              @mouseleave="stopPtz"
-              @touchstart.prevent="startPtz('up')"
-              @touchend="stopPtz"
-              class="ptz-btn"
-              title="Tilt Up"
+              @mousedown="startPtz('up')" @mouseup="stopPtz" @mouseleave="stopPtz"
+              @touchstart.prevent="startPtz('up')" @touchend="stopPtz"
+              class="ptz-btn" title="Tilt Up"
             >
-              <Icon icon="mdi:chevron-up" class="text-xl" />
+              <Icon icon="mdi:chevron-up" />
             </button>
             <div></div>
             
-            <!-- Middle row -->
             <button 
-              @mousedown="startPtz('left')"
-              @mouseup="stopPtz"
-              @mouseleave="stopPtz"
-              @touchstart.prevent="startPtz('left')"
-              @touchend="stopPtz"
-              class="ptz-btn"
-              title="Pan Left"
+              @mousedown="startPtz('left')" @mouseup="stopPtz" @mouseleave="stopPtz"
+              @touchstart.prevent="startPtz('left')" @touchend="stopPtz"
+              class="ptz-btn" title="Pan Left"
             >
-              <Icon icon="mdi:chevron-left" class="text-xl" />
+              <Icon icon="mdi:chevron-left" />
+            </button>
+            <button @click="sendPtzCommand('home')" class="ptz-btn ptz-home" title="Home">
+              <Icon icon="mdi:home" />
             </button>
             <button 
-              @click="sendPtzCommand('home')"
-              class="ptz-btn"
-              title="Home Position"
+              @mousedown="startPtz('right')" @mouseup="stopPtz" @mouseleave="stopPtz"
+              @touchstart.prevent="startPtz('right')" @touchend="stopPtz"
+              class="ptz-btn" title="Pan Right"
             >
-              <Icon icon="mdi:home" class="text-lg" />
-            </button>
-            <button 
-              @mousedown="startPtz('right')"
-              @mouseup="stopPtz"
-              @mouseleave="stopPtz"
-              @touchstart.prevent="startPtz('right')"
-              @touchend="stopPtz"
-              class="ptz-btn"
-              title="Pan Right"
-            >
-              <Icon icon="mdi:chevron-right" class="text-xl" />
+              <Icon icon="mdi:chevron-right" />
             </button>
             
-            <!-- Bottom row -->
             <div></div>
             <button 
-              @mousedown="startPtz('down')"
-              @mouseup="stopPtz"
-              @mouseleave="stopPtz"
-              @touchstart.prevent="startPtz('down')"
-              @touchend="stopPtz"
-              class="ptz-btn"
-              title="Tilt Down"
+              @mousedown="startPtz('down')" @mouseup="stopPtz" @mouseleave="stopPtz"
+              @touchstart.prevent="startPtz('down')" @touchend="stopPtz"
+              class="ptz-btn" title="Tilt Down"
             >
-              <Icon icon="mdi:chevron-down" class="text-xl" />
+              <Icon icon="mdi:chevron-down" />
             </button>
             <div></div>
           </div>
           
-          <!-- Zoom controls -->
-          <div class="flex justify-center gap-2 pt-2 border-t border-white/10">
+          <div class="ptz-zoom">
             <button 
-              @mousedown="startPtz('zoom_out')"
-              @mouseup="stopPtz"
-              @mouseleave="stopPtz"
-              @touchstart.prevent="startPtz('zoom_out')"
-              @touchend="stopPtz"
-              class="ptz-btn"
-              title="Zoom Out"
+              @mousedown="startPtz('zoom_out')" @mouseup="stopPtz" @mouseleave="stopPtz"
+              @touchstart.prevent="startPtz('zoom_out')" @touchend="stopPtz"
+              class="ptz-btn" title="Zoom Out"
             >
-              <Icon icon="mdi:minus" class="text-lg" />
+              <Icon icon="mdi:magnify-minus" />
             </button>
             <button 
-              @mousedown="startPtz('zoom_in')"
-              @mouseup="stopPtz"
-              @mouseleave="stopPtz"
-              @touchstart.prevent="startPtz('zoom_in')"
-              @touchend="stopPtz"
-              class="ptz-btn"
-              title="Zoom In"
+              @mousedown="startPtz('zoom_in')" @mouseup="stopPtz" @mouseleave="stopPtz"
+              @touchstart.prevent="startPtz('zoom_in')" @touchend="stopPtz"
+              class="ptz-btn" title="Zoom In"
             >
-              <Icon icon="mdi:plus" class="text-lg" />
+              <Icon icon="mdi:magnify-plus" />
             </button>
           </div>
         </div>
       </div>
     </transition>
 
-    <!-- Controls Overlay -->
-    <transition name="fade">
-      <div 
-        v-show="showControls || !isPlaying"
-        class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none"
-      >
-        <!-- Top Bar -->
-        <div class="absolute top-0 left-0 right-0 p-4 flex items-center justify-between pointer-events-auto">
-          <div class="flex items-center gap-2">
-            <span class="px-2 py-1 rounded-md text-xs font-medium" 
-              :class="isPlaying ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'">
-              {{ currentMode.toUpperCase() }}
-            </span>
-            <span v-if="isPlaying" class="flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-red-500/20 text-red-400">
-              <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-              LIVE
-            </span>
-          </div>
-          <div class="text-white text-sm font-medium">{{ src }}</div>
-        </div>
-
-        <!-- Bottom Controls -->
-        <div class="absolute bottom-0 left-0 right-0 p-4 pointer-events-auto">
-          <div class="flex items-center justify-between">
-            <!-- Left Controls -->
-            <div class="flex items-center gap-2">
-              <button 
-                @click="isPlaying ? stop() : play()" 
-                class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-              >
-                <Icon :icon="isPlaying ? 'mdi:stop' : 'mdi:play'" class="text-white text-xl" />
-              </button>
-              
-              <button 
-                @click="toggleMute"
-                class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-              >
-                <Icon :icon="isMuted ? 'mdi:volume-off' : 'mdi:volume-high'" class="text-white text-lg" />
-              </button>
-
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                :value="volume"
-                @input="setVolume(Number(($event.target as HTMLInputElement).value))"
-                class="w-20 h-1 rounded-full appearance-none bg-white/20 cursor-pointer"
-              />
-            </div>
-
-            <!-- Mode Switcher -->
-            <div class="flex items-center gap-1">
-              <button
-                v-for="mode in modes"
-                :key="mode"
-                @click="switchMode(mode)"
-                class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                :class="currentMode === mode 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-white/10 text-white/70 hover:bg-white/20'"
-              >
-                {{ mode.toUpperCase() }}
-              </button>
-            </div>
-
-            <!-- Right Controls -->
-            <div class="flex items-center gap-2">
-              <!-- PTZ Toggle -->
-              <button 
-                @click="showPtzPanel = !showPtzPanel"
-                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                :class="showPtzPanel ? 'bg-blue-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white'"
-                title="PTZ Controls"
-              >
-                <Icon icon="mdi:gamepad-variant" class="text-lg" />
-              </button>
-              
-              <button 
-                @click="toggleFullscreen"
-                class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-              >
-                <Icon :icon="isFullscreen ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'" class="text-white text-lg" />
-              </button>
-            </div>
-          </div>
-        </div>
+    <!-- Top Bar -->
+    <div class="video-top-bar">
+      <div class="top-left">
+        <span class="mode-badge" :class="{ playing: isPlaying }">
+          {{ currentMode.toUpperCase() }}
+        </span>
+        <span v-if="isPlaying" class="live-badge">
+          <span class="live-dot"></span>
+          LIVE
+        </span>
       </div>
-    </transition>
+      <div class="stream-name">{{ src }}</div>
+    </div>
+
+    <!-- Bottom Controls -->
+    <div class="video-controls">
+      <div class="controls-left">
+        <button @click="isPlaying ? stop() : play()" class="control-btn play-btn">
+          <Icon :icon="isPlaying ? 'mdi:stop' : 'mdi:play'" />
+        </button>
+        
+        <button @click="toggleMute" class="control-btn">
+          <Icon :icon="isMuted ? 'mdi:volume-off' : 'mdi:volume-high'" />
+        </button>
+
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.1"
+          :value="volume"
+          @input="setVolume(Number(($event.target as HTMLInputElement).value))"
+          class="volume-slider"
+        />
+      </div>
+
+      <!-- Mode Switcher -->
+      <div class="mode-switcher">
+        <button
+          v-for="mode in modes"
+          :key="mode"
+          @click="switchMode(mode)"
+          class="mode-btn"
+          :class="{ active: currentMode === mode }"
+        >
+          {{ mode.toUpperCase() }}
+        </button>
+      </div>
+
+      <div class="controls-right">
+        <button 
+          @click="showPtzPanel = !showPtzPanel"
+          class="control-btn"
+          :class="{ active: showPtzPanel }"
+          title="PTZ Controls"
+        >
+          <Icon icon="mdi:gamepad-variant-outline" />
+        </button>
+        
+        <button @click="toggleFullscreen" class="control-btn">
+          <Icon :icon="isFullscreen ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'" />
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease;
+.video-container {
+  position: relative;
+  background: #000;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  aspect-ratio: 16/9;
+  min-height: 300px;
 }
 
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
+.video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
-input[type="range"]::-webkit-slider-thumb {
+/* Overlays */
+.video-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.video-overlay.error {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.loading-spinner {
+  width: 3rem;
+  height: 3rem;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+.overlay-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 0.5rem;
+}
+
+.overlay-text {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.overlay-subtext {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 0.25rem;
+}
+
+.error-icon {
+  font-size: 3rem;
+  color: var(--danger);
+  margin-bottom: 1rem;
+}
+
+/* Top Bar */
+.video-top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), transparent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+}
+
+.top-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mode-badge {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mode-badge.playing {
+  background: var(--success-muted);
+  color: var(--success);
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+.live-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  border-radius: var(--radius-md);
+  background: var(--danger-muted);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.stream-name {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 0.375rem 0.75rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: var(--radius-md);
+}
+
+/* Bottom Controls */
+.video-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  z-index: 10;
+}
+
+.controls-left,
+.controls-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.control-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.control-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.control-btn.active {
+  background: var(--accent-primary);
+}
+
+.play-btn {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  font-size: 1.5rem;
+}
+
+.volume-slider {
+  width: 5rem;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 12px;
   height: 12px;
@@ -667,18 +771,75 @@ input[type="range"]::-webkit-slider-thumb {
   cursor: pointer;
 }
 
+/* Mode Switcher */
+.mode-switcher {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: var(--radius-lg);
+}
+
+.mode-btn {
+  padding: 0.5rem 0.875rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-md);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.mode-btn:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.mode-btn.active {
+  background: var(--accent-primary);
+  color: white;
+}
+
+/* PTZ Panel */
+.ptz-overlay {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+}
+
+.ptz-panel {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 1rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ptz-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
 .ptz-btn {
-  width: 36px;
-  height: 36px;
+  width: 2.75rem;
+  height: 2.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  transition: all 0.15s ease;
-  cursor: pointer;
   border: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: 1.375rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
 }
 
 .ptz-btn:hover {
@@ -686,7 +847,31 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .ptz-btn:active {
-  background: rgba(59, 130, 246, 0.5);
+  background: var(--accent-primary);
   transform: scale(0.95);
+}
+
+.ptz-home {
+  background: var(--accent-primary-muted);
+  font-size: 1.125rem;
+}
+
+.ptz-zoom {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Transitions */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

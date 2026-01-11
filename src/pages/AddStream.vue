@@ -14,101 +14,29 @@ const isSubmitting = ref(false)
 const error = ref<string | null>(null)
 
 const streamSources: StreamSource[] = [
-  { 
-    id: 'rtsp', 
-    name: 'RTSP Camera', 
-    icon: 'mdi:cctv', 
-    color: 'blue',
-    description: 'Connect to RTSP/RTSPS streams'
-  },
-  { 
-    id: 'rtmp', 
-    name: 'RTMP Stream', 
-    icon: 'mdi:broadcast', 
-    color: 'red',
-    description: 'Connect to RTMP streams'
-  },
-  { 
-    id: 'onvif', 
-    name: 'ONVIF Camera', 
-    icon: 'mdi:camera-outline', 
-    color: 'green',
-    description: 'Auto-discover ONVIF cameras'
-  },
-  { 
-    id: 'ffmpeg', 
-    name: 'FFmpeg', 
-    icon: 'mdi:movie-open', 
-    color: 'orange',
-    description: 'Use FFmpeg for custom sources'
-  },
-  { 
-    id: 'homekit', 
-    name: 'HomeKit', 
-    icon: 'mdi:apple', 
-    color: 'gray',
-    description: 'Connect HomeKit cameras'
-  },
-  { 
-    id: 'hass', 
-    name: 'Home Assistant', 
-    icon: 'mdi:home-assistant', 
-    color: 'cyan',
-    description: 'Import from Home Assistant'
-  },
-  { 
-    id: 'nest', 
-    name: 'Google Nest', 
-    icon: 'mdi:google', 
-    color: 'yellow',
-    description: 'Connect Nest cameras'
-  },
-  { 
-    id: 'ring', 
-    name: 'Ring', 
-    icon: 'mdi:doorbell-video', 
-    color: 'blue',
-    description: 'Connect Ring doorbells/cameras'
-  },
-  { 
-    id: 'aqara', 
-    name: 'Aqara', 
-    icon: 'mdi:home-automation', 
-    color: 'orange',
-    description: 'Connect Aqara cameras'
-  },
-  { 
-    id: 'tapo', 
-    name: 'TP-Link Tapo', 
-    icon: 'mdi:router-wireless', 
-    color: 'green',
-    description: 'Connect Tapo cameras'
-  },
-  { 
-    id: 'echo', 
-    name: 'Amazon Echo', 
-    icon: 'mdi:amazon-alexa', 
-    color: 'cyan',
-    description: 'Connect Echo Show cameras'
-  },
-  { 
-    id: 'http', 
-    name: 'HTTP/HTTPS', 
-    icon: 'mdi:web', 
-    color: 'purple',
-    description: 'Connect to HTTP streams'
-  },
+  { id: 'rtsp', name: 'RTSP Camera', icon: 'mdi:cctv', color: 'blue', description: 'Connect to RTSP/RTSPS streams' },
+  { id: 'rtmp', name: 'RTMP Stream', icon: 'mdi:broadcast', color: 'red', description: 'Connect to RTMP streams' },
+  { id: 'onvif', name: 'ONVIF Camera', icon: 'mdi:camera-outline', color: 'green', description: 'Auto-discover ONVIF cameras' },
+  { id: 'ffmpeg', name: 'FFmpeg', icon: 'mdi:movie-open-outline', color: 'orange', description: 'Use FFmpeg for custom sources' },
+  { id: 'homekit', name: 'HomeKit', icon: 'mdi:apple', color: 'gray', description: 'Connect HomeKit cameras' },
+  { id: 'hass', name: 'Home Assistant', icon: 'mdi:home-assistant', color: 'cyan', description: 'Import from Home Assistant' },
+  { id: 'nest', name: 'Google Nest', icon: 'mdi:google', color: 'yellow', description: 'Connect Nest cameras' },
+  { id: 'ring', name: 'Ring', icon: 'mdi:doorbell-video', color: 'blue', description: 'Connect Ring doorbells/cameras' },
+  { id: 'aqara', name: 'Aqara', icon: 'mdi:home-automation', color: 'orange', description: 'Connect Aqara cameras' },
+  { id: 'tapo', name: 'TP-Link Tapo', icon: 'mdi:router-wireless', color: 'green', description: 'Connect Tapo cameras' },
+  { id: 'echo', name: 'Amazon Echo', icon: 'mdi:amazon-alexa', color: 'cyan', description: 'Connect Echo Show cameras' },
+  { id: 'http', name: 'HTTP/HTTPS', icon: 'mdi:web', color: 'purple', description: 'Connect to HTTP streams' },
 ]
 
-const colorClasses: Record<string, string> = {
-  blue: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  red: 'bg-red-500/20 text-red-400 border-red-500/30',
-  green: 'bg-green-500/20 text-green-400 border-green-500/30',
-  orange: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-  gray: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-  cyan: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
-  yellow: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  purple: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+const colorStyles: Record<string, { bg: string; text: string; border: string }> = {
+  blue: { bg: 'var(--info-muted)', text: 'var(--info)', border: 'rgba(59, 130, 246, 0.2)' },
+  red: { bg: 'var(--danger-muted)', text: 'var(--danger)', border: 'rgba(239, 68, 68, 0.2)' },
+  green: { bg: 'var(--success-muted)', text: 'var(--success)', border: 'rgba(34, 197, 94, 0.2)' },
+  orange: { bg: 'var(--warning-muted)', text: 'var(--warning)', border: 'rgba(234, 179, 8, 0.2)' },
+  gray: { bg: 'rgba(113, 113, 122, 0.15)', text: '#a1a1aa', border: 'rgba(113, 113, 122, 0.2)' },
+  cyan: { bg: 'var(--accent-secondary-muted)', text: 'var(--accent-secondary)', border: 'rgba(6, 182, 212, 0.2)' },
+  yellow: { bg: 'rgba(234, 179, 8, 0.15)', text: '#eab308', border: 'rgba(234, 179, 8, 0.2)' },
+  purple: { bg: 'var(--accent-primary-muted)', text: 'var(--accent-primary)', border: 'rgba(139, 92, 246, 0.2)' },
 }
 
 function openModal(source: StreamSource) {
@@ -164,29 +92,31 @@ async function addStream() {
 <template>
   <div class="animate-fade-in">
     <!-- Header -->
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold gradient-text">Add Stream</h1>
-      <p class="mt-1" style="color: var(--text-secondary)">
-        Choose a source type to add a new stream
-      </p>
+    <div class="page-header">
+      <h1 class="page-title">Add Stream</h1>
+      <p class="page-subtitle">Choose a source type to add a new stream</p>
     </div>
 
     <!-- Source Grid -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div class="source-grid">
       <button
         v-for="source in streamSources"
         :key="source.id"
         @click="openModal(source)"
-        class="card text-left group hover:scale-[1.02] transition-all"
+        class="source-card"
       >
         <div 
-          class="w-12 h-12 rounded-xl flex items-center justify-center mb-4 border transition-colors"
-          :class="colorClasses[source.color]"
+          class="source-icon"
+          :style="{ 
+            background: colorStyles[source.color].bg, 
+            color: colorStyles[source.color].text,
+            borderColor: colorStyles[source.color].border
+          }"
         >
-          <Icon :icon="source.icon" class="text-2xl" />
+          <Icon :icon="source.icon" />
         </div>
-        <h3 class="font-semibold mb-1" style="color: var(--text-primary)">{{ source.name }}</h3>
-        <p class="text-sm" style="color: var(--text-muted)">{{ source.description }}</p>
+        <h3 class="source-name">{{ source.name }}</h3>
+        <p class="source-desc">{{ source.description }}</p>
       </button>
     </div>
 
@@ -195,34 +125,32 @@ async function addStream() {
       <transition name="fade">
         <div 
           v-if="showModal"
-          class="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style="background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px)"
+          class="modal-overlay"
           @click.self="closeModal"
         >
-          <div class="glass-card w-full max-w-md p-6 animate-fade-in">
-            <div class="flex items-center justify-between mb-6">
-              <div class="flex items-center gap-3">
+          <div class="modal-content animate-scale-in">
+            <div class="modal-header">
+              <div class="modal-title-row">
                 <div 
                   v-if="selectedSource"
-                  class="w-10 h-10 rounded-lg flex items-center justify-center"
-                  :class="colorClasses[selectedSource.color]"
+                  class="source-icon small"
+                  :style="{ 
+                    background: colorStyles[selectedSource.color].bg, 
+                    color: colorStyles[selectedSource.color].text 
+                  }"
                 >
-                  <Icon :icon="selectedSource.icon" class="text-xl" />
+                  <Icon :icon="selectedSource.icon" />
                 </div>
-                <h2 class="text-xl font-bold" style="color: var(--text-primary)">
-                  Add {{ selectedSource?.name }}
-                </h2>
+                <h2 class="modal-title">Add {{ selectedSource?.name }}</h2>
               </div>
-              <button @click="closeModal" class="btn-icon btn-ghost">
-                <Icon icon="mdi:close" class="text-xl" />
+              <button @click="closeModal" class="btn-icon">
+                <Icon icon="mdi:close" />
               </button>
             </div>
 
-            <form @submit.prevent="addStream" class="space-y-4">
-              <div>
-                <label class="block text-sm font-medium mb-2" style="color: var(--text-secondary)">
-                  Stream Name
-                </label>
+            <form @submit.prevent="addStream" class="modal-form">
+              <div class="form-group">
+                <label class="form-label">Stream Name</label>
                 <input
                   v-model="streamName"
                   type="text"
@@ -232,32 +160,27 @@ async function addStream() {
                 />
               </div>
 
-              <div>
-                <label class="block text-sm font-medium mb-2" style="color: var(--text-secondary)">
-                  Stream URL
-                </label>
+              <div class="form-group">
+                <label class="form-label">Stream URL</label>
                 <input
                   v-model="streamUrl"
                   type="text"
-                  class="input font-mono text-sm"
+                  class="input mono"
                   :placeholder="getPlaceholderUrl(selectedSource?.id || '')"
                   required
                 />
               </div>
 
-              <div v-if="error" class="p-3 rounded-lg bg-red-500/10 border border-red-500/30">
-                <p class="text-sm text-red-400">{{ error }}</p>
+              <div v-if="error" class="error-box">
+                <Icon icon="mdi:alert-circle-outline" />
+                <span>{{ error }}</span>
               </div>
 
-              <div class="flex justify-end gap-3 pt-2">
+              <div class="modal-actions">
                 <button type="button" @click="closeModal" class="btn btn-secondary">
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
-                  class="btn btn-primary"
-                  :disabled="isSubmitting"
-                >
+                <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
                   <Icon v-if="isSubmitting" icon="mdi:loading" class="animate-spin" />
                   <Icon v-else icon="mdi:plus" />
                   Add Stream
@@ -272,6 +195,178 @@ async function addStream() {
 </template>
 
 <style scoped>
+.page-header {
+  margin-bottom: 2rem;
+}
+
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.page-subtitle {
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+/* Source Grid */
+.source-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .source-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .source-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.source-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 1.25rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.source-card:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
+}
+
+.source-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid;
+}
+
+.source-icon.small {
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 1.25rem;
+  margin-bottom: 0;
+}
+
+.source-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.source-desc {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 28rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.mono {
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 0.8125rem;
+}
+
+.error-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--danger-muted);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-lg);
+  color: var(--danger);
+  font-size: 0.875rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+/* Transitions */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;

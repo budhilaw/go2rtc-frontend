@@ -54,7 +54,6 @@ const settings = reactive({
 let ptzInterval: number | null = null
 const isCruising = ref(false)
 
-// PTZ direction mapping (degrees: 0=up, 90=right, 180=down, 270=left)
 const ptzDirections = {
   up: 0,
   right: 90,
@@ -294,30 +293,26 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="tapo-control-panel">
+  <div class="tapo-panel">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-4 pb-3 border-b" style="border-color: var(--border-color)">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
-          <Icon icon="mdi:cctv" class="text-green-400 text-xl" />
+    <div class="panel-header">
+      <div class="panel-info">
+        <div class="panel-icon">
+          <Icon icon="mdi:cctv" />
         </div>
         <div>
-          <h3 class="font-semibold" style="color: var(--text-primary)">
-            {{ deviceInfo?.device_alias || props.streamName || 'Tapo Camera' }}
-          </h3>
-          <p class="text-xs" style="color: var(--text-muted)">{{ props.cameraIp }}</p>
+          <h3 class="panel-title">{{ deviceInfo?.device_alias || props.streamName || 'Tapo Camera' }}</h3>
+          <p class="panel-ip">{{ props.cameraIp }}</p>
         </div>
       </div>
-      <button @click="emit('close')" class="btn-icon btn-ghost">
-        <Icon icon="mdi:close" class="text-xl" />
+      <button @click="emit('close')" class="btn-icon">
+        <Icon icon="mdi:close" />
       </button>
     </div>
 
     <!-- Config Required -->
-    <div v-if="!isConfigured" class="py-4">
-      <p class="text-sm mb-4" style="color: var(--text-secondary)">
-        Please configure Tapo API credentials to control this camera.
-      </p>
+    <div v-if="!isConfigured" class="config-required">
+      <p>Please configure Tapo API credentials to control this camera.</p>
       <button @click="activeTab = 'config'" class="btn btn-primary w-full">
         <Icon icon="mdi:cog" />
         Configure
@@ -325,31 +320,28 @@ onMounted(() => {
     </div>
 
     <!-- Error -->
-    <div v-if="error" class="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
-      <p class="text-sm text-red-400">{{ error }}</p>
+    <div v-if="error" class="error-alert">
+      <Icon icon="mdi:alert-circle-outline" />
+      <span>{{ error }}</span>
     </div>
 
     <!-- Tabs -->
-    <div v-if="isConfigured" class="flex gap-1 mb-4">
+    <div v-if="isConfigured" class="panel-tabs">
       <button 
         v-for="tab in ['ptz', 'presets', 'settings', 'config'] as const"
         :key="tab"
         @click="activeTab = tab"
-        class="flex-1 py-2 text-sm font-medium rounded-lg transition-colors"
-        :class="activeTab === tab 
-          ? 'bg-blue-500/20 text-blue-400' 
-          : 'hover:bg-white/5'"
-        :style="{ color: activeTab !== tab ? 'var(--text-secondary)' : undefined }"
+        class="tab-btn"
+        :class="{ active: activeTab === tab }"
       >
         {{ tab.charAt(0).toUpperCase() + tab.slice(1) }}
       </button>
     </div>
 
     <!-- PTZ Tab -->
-    <div v-if="activeTab === 'ptz' && isConfigured">
-      <!-- D-Pad -->
-      <div class="flex flex-col items-center gap-2 mb-4">
-        <div class="grid grid-cols-3 gap-1">
+    <div v-if="activeTab === 'ptz' && isConfigured" class="tab-content">
+      <div class="ptz-controls">
+        <div class="ptz-grid">
           <button 
             @mousedown="startPtz('upLeft')" @mouseup="stopPtz" @mouseleave="stopPtz"
             @touchstart.prevent="startPtz('upLeft')" @touchend="stopPtz"
@@ -375,7 +367,7 @@ onMounted(() => {
             class="ptz-btn">
             <Icon icon="mdi:arrow-left" />
           </button>
-          <button @click="calibrate" class="ptz-btn" title="Calibrate">
+          <button @click="calibrate" class="ptz-btn home">
             <Icon icon="mdi:home" />
           </button>
           <button 
@@ -406,10 +398,9 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Cruise Control -->
       <button 
         @click="toggleCruise"
-        class="btn w-full mb-2"
+        class="btn w-full"
         :class="isCruising ? 'btn-primary' : 'btn-secondary'"
       >
         <Icon :icon="isCruising ? 'mdi:stop' : 'mdi:rotate-360'" />
@@ -418,214 +409,445 @@ onMounted(() => {
     </div>
 
     <!-- Presets Tab -->
-    <div v-if="activeTab === 'presets' && isConfigured">
-      <!-- Add Preset -->
-      <div class="flex gap-2 mb-4">
+    <div v-if="activeTab === 'presets' && isConfigured" class="tab-content">
+      <div class="preset-form">
         <input 
           v-model="newPresetName"
           type="text"
           placeholder="New preset name"
-          class="input flex-1"
+          class="input"
         />
         <button @click="createPreset" class="btn btn-primary" :disabled="!newPresetName">
           <Icon icon="mdi:plus" />
         </button>
       </div>
 
-      <!-- Preset List -->
-      <div class="space-y-2 max-h-48 overflow-y-auto">
+      <div class="preset-list">
         <div 
           v-for="preset in presets" 
           :key="preset.id"
-          class="flex items-center justify-between p-3 rounded-lg"
-          style="background: var(--bg-secondary)"
+          class="preset-item"
         >
-          <span class="text-sm" style="color: var(--text-primary)">{{ preset.name }}</span>
-          <div class="flex gap-1">
-            <button @click="gotoPreset(preset.id)" class="btn-icon btn-ghost" title="Go to">
+          <span class="preset-name">{{ preset.name }}</span>
+          <div class="preset-actions">
+            <button @click="gotoPreset(preset.id)" class="btn-icon" title="Go to">
               <Icon icon="mdi:target" />
             </button>
             <button 
               v-if="!preset.read_only"
               @click="deletePreset(preset.id)" 
-              class="btn-icon btn-ghost text-red-400" 
+              class="btn-icon delete"
               title="Delete"
             >
-              <Icon icon="mdi:delete" />
+              <Icon icon="mdi:delete-outline" />
             </button>
           </div>
         </div>
-        <p v-if="presets.length === 0" class="text-center py-4" style="color: var(--text-muted)">
-          No presets saved
-        </p>
+        <p v-if="presets.length === 0" class="empty-text">No presets saved</p>
       </div>
     </div>
 
     <!-- Settings Tab -->
-    <div v-if="activeTab === 'settings' && isConfigured" class="space-y-3">
-      <!-- Toggle Settings -->
-      <div class="flex items-center justify-between p-3 rounded-lg" style="background: var(--bg-secondary)">
-        <div class="flex items-center gap-3">
-          <Icon icon="mdi:eye-off" class="text-lg" style="color: var(--text-muted)" />
-          <span class="text-sm" style="color: var(--text-primary)">Privacy Mode</span>
+    <div v-if="activeTab === 'settings' && isConfigured" class="tab-content">
+      <div class="setting-item">
+        <div class="setting-label">
+          <Icon icon="mdi:eye-off-outline" />
+          <span>Privacy Mode</span>
         </div>
         <button 
           @click="togglePrivacy"
-          class="w-12 h-6 rounded-full transition-colors relative"
-          :class="settings.privacyMode ? 'bg-blue-500' : 'bg-gray-600'"
-        >
-          <span 
-            class="absolute top-1 w-4 h-4 rounded-full bg-white transition-transform"
-            :class="settings.privacyMode ? 'left-7' : 'left-1'"
-          />
-        </button>
+          class="toggle"
+          :class="{ active: settings.privacyMode }"
+        ></button>
       </div>
 
-      <div class="flex items-center justify-between p-3 rounded-lg" style="background: var(--bg-secondary)">
-        <div class="flex items-center gap-3">
-          <Icon icon="mdi:led-on" class="text-lg" style="color: var(--text-muted)" />
-          <span class="text-sm" style="color: var(--text-primary)">Status LED</span>
+      <div class="setting-item">
+        <div class="setting-label">
+          <Icon icon="mdi:led-on" />
+          <span>Status LED</span>
         </div>
         <button 
           @click="toggleLed"
-          class="w-12 h-6 rounded-full transition-colors relative"
-          :class="settings.ledEnabled ? 'bg-blue-500' : 'bg-gray-600'"
-        >
-          <span 
-            class="absolute top-1 w-4 h-4 rounded-full bg-white transition-transform"
-            :class="settings.ledEnabled ? 'left-7' : 'left-1'"
-          />
-        </button>
+          class="toggle"
+          :class="{ active: settings.ledEnabled }"
+        ></button>
       </div>
 
-      <div class="flex items-center justify-between p-3 rounded-lg" style="background: var(--bg-secondary)">
-        <div class="flex items-center gap-3">
-          <Icon icon="mdi:motion-sensor" class="text-lg" style="color: var(--text-muted)" />
-          <span class="text-sm" style="color: var(--text-primary)">Motion Detection</span>
+      <div class="setting-item">
+        <div class="setting-label">
+          <Icon icon="mdi:motion-sensor" />
+          <span>Motion Detection</span>
         </div>
         <button 
           @click="toggleMotionDetection"
-          class="w-12 h-6 rounded-full transition-colors relative"
-          :class="settings.motionDetection ? 'bg-blue-500' : 'bg-gray-600'"
-        >
-          <span 
-            class="absolute top-1 w-4 h-4 rounded-full bg-white transition-transform"
-            :class="settings.motionDetection ? 'left-7' : 'left-1'"
-          />
-        </button>
+          class="toggle"
+          :class="{ active: settings.motionDetection }"
+        ></button>
       </div>
 
-      <div class="flex items-center justify-between p-3 rounded-lg" style="background: var(--bg-secondary)">
-        <div class="flex items-center gap-3">
-          <Icon icon="mdi:human" class="text-lg" style="color: var(--text-muted)" />
-          <span class="text-sm" style="color: var(--text-primary)">Person Detection</span>
+      <div class="setting-item">
+        <div class="setting-label">
+          <Icon icon="mdi:human" />
+          <span>Person Detection</span>
         </div>
         <button 
           @click="togglePersonDetection"
-          class="w-12 h-6 rounded-full transition-colors relative"
-          :class="settings.personDetection ? 'bg-blue-500' : 'bg-gray-600'"
-        >
-          <span 
-            class="absolute top-1 w-4 h-4 rounded-full bg-white transition-transform"
-            :class="settings.personDetection ? 'left-7' : 'left-1'"
-          />
-        </button>
+          class="toggle"
+          :class="{ active: settings.personDetection }"
+        ></button>
       </div>
 
-      <!-- Flip Type -->
-      <div class="p-3 rounded-lg" style="background: var(--bg-secondary)">
-        <p class="text-sm mb-2" style="color: var(--text-primary)">Image Flip</p>
-        <div class="flex gap-2">
+      <div class="setting-group">
+        <p class="setting-group-label">Image Flip</p>
+        <div class="option-buttons">
           <button 
             v-for="flip in ['off', 'vertical', 'horizontal', 'both']"
             :key="flip"
             @click="setFlip(flip)"
-            class="flex-1 py-1.5 text-xs rounded-lg transition-colors"
-            :class="settings.flipType === flip ? 'bg-blue-500 text-white' : 'bg-white/5'"
+            class="option-btn"
+            :class="{ active: settings.flipType === flip }"
           >
             {{ flip }}
           </button>
         </div>
       </div>
 
-      <!-- Night Mode -->
-      <div class="p-3 rounded-lg" style="background: var(--bg-secondary)">
-        <p class="text-sm mb-2" style="color: var(--text-primary)">Night Mode</p>
-        <div class="flex gap-2">
+      <div class="setting-group">
+        <p class="setting-group-label">Night Mode</p>
+        <div class="option-buttons">
           <button 
             v-for="mode in ['auto', 'on', 'off']"
             :key="mode"
             @click="setNightMode(mode)"
-            class="flex-1 py-1.5 text-xs rounded-lg transition-colors"
-            :class="settings.nightMode === mode ? 'bg-blue-500 text-white' : 'bg-white/5'"
+            class="option-btn"
+            :class="{ active: settings.nightMode === mode }"
           >
             {{ mode }}
           </button>
         </div>
       </div>
 
-      <!-- Reboot -->
-      <button @click="rebootCamera" class="btn btn-secondary w-full text-red-400 hover:text-red-300">
+      <button @click="rebootCamera" class="btn btn-danger w-full">
         <Icon icon="mdi:restart" />
         Reboot Camera
       </button>
     </div>
 
     <!-- Config Tab -->
-    <div v-if="activeTab === 'config'" class="space-y-4">
-      <div>
-        <label class="block text-sm mb-1" style="color: var(--text-secondary)">Tapo API URL</label>
+    <div v-if="activeTab === 'config'" class="tab-content">
+      <div class="form-group">
+        <label class="form-label">Tapo API URL</label>
         <input v-model="tapoApiUrl" type="text" class="input" placeholder="http://localhost:3000" />
       </div>
-      <div>
-        <label class="block text-sm mb-1" style="color: var(--text-secondary)">Tapo Username</label>
+      <div class="form-group">
+        <label class="form-label">Tapo Username</label>
         <input v-model="tapoUsername" type="text" class="input" placeholder="admin" />
       </div>
-      <div>
-        <label class="block text-sm mb-1" style="color: var(--text-secondary)">Tapo Password</label>
+      <div class="form-group">
+        <label class="form-label">Tapo Password</label>
         <input v-model="tapoPassword" type="password" class="input" />
       </div>
       <button @click="saveConfig" class="btn btn-primary w-full">
-        <Icon icon="mdi:content-save" />
+        <Icon icon="mdi:content-save-outline" />
         Save Configuration
       </button>
     </div>
 
-    <!-- Loading overlay -->
-    <div v-if="loading" class="absolute inset-0 bg-black/50 flex items-center justify-center rounded-xl">
-      <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+    <!-- Loading Overlay -->
+    <div v-if="loading" class="loading-overlay">
+      <div class="loading-spinner"></div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.tapo-control-panel {
+.tapo-panel {
   position: relative;
-  padding: 1rem;
-  min-width: 300px;
+  padding: 1.25rem;
 }
 
-.ptz-btn {
-  width: 44px;
-  height: 44px;
+/* Header */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.panel-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-lg);
+  background: var(--success-muted);
+  color: var(--success);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  background: var(--bg-tertiary);
+  font-size: 1.25rem;
+}
+
+.panel-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.panel-ip {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Config Required */
+.config-required {
+  padding: 1rem 0;
+}
+
+.config-required p {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+/* Error */
+.error-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  background: var(--danger-muted);
+  border-radius: var(--radius-lg);
+  color: var(--danger);
+  font-size: 0.8125rem;
+}
+
+/* Tabs */
+.panel-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.tab-btn:hover {
+  background: var(--bg-hover);
+}
+
+.tab-btn.active {
+  background: var(--accent-primary-muted);
+  color: var(--accent-primary);
+}
+
+/* Tab Content */
+.tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* PTZ Controls */
+.ptz-controls {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.ptz-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.25rem;
+}
+
+.ptz-btn {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: var(--bg-elevated);
   color: var(--text-primary);
   font-size: 1.25rem;
-  transition: all 0.15s ease;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  border: none;
+  transition: all var(--transition-fast);
 }
 
 .ptz-btn:hover {
+  background: var(--bg-hover);
+}
+
+.ptz-btn:active {
+  background: var(--accent-primary);
+  transform: scale(0.95);
+}
+
+.ptz-btn.home {
+  background: var(--accent-primary-muted);
+  color: var(--accent-primary);
+}
+
+/* Presets */
+.preset-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.preset-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+}
+
+.preset-name {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.preset-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.btn-icon.delete:hover {
+  background: var(--danger-muted);
+  color: var(--danger);
+}
+
+.empty-text {
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+/* Settings */
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+}
+
+.setting-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.setting-label svg {
+  color: var(--text-muted);
+}
+
+.setting-group {
+  padding: 0.875rem;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+}
+
+.setting-group-label {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+
+.option-buttons {
+  display: flex;
+  gap: 0.375rem;
+}
+
+.option-btn {
+  flex: 1;
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: none;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-transform: capitalize;
+}
+
+.option-btn:hover {
+  background: var(--bg-hover);
+}
+
+.option-btn.active {
   background: var(--accent-primary);
   color: white;
 }
 
-.ptz-btn:active {
-  transform: scale(0.95);
+/* Form */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.form-label {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+/* Loading */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 15, 20, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xl);
+}
+
+.loading-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Utilities */
+.w-full {
+  width: 100%;
 }
 </style>

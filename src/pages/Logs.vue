@@ -42,11 +42,11 @@ const filteredLogs = computed(() => {
   return result
 })
 
-const levelColors: Record<string, string> = {
-  DEBUG: 'text-gray-400',
-  INFO: 'text-blue-400',
-  WARN: 'text-yellow-400',
-  ERROR: 'text-red-400',
+const levelStyles: Record<string, string> = {
+  DEBUG: 'text-muted',
+  INFO: 'text-info',
+  WARN: 'text-warning',
+  ERROR: 'text-danger',
 }
 
 function connect() {
@@ -71,13 +71,11 @@ function connect() {
           message: data.value.message || data.value
         })
         
-        // Keep only last 1000 logs
         if (logs.value.length > 1000) {
           logs.value = logs.value.slice(-1000)
         }
       }
     } catch {
-      // Handle plain text logs
       logs.value.push({
         id: logId++,
         time: new Date().toLocaleTimeString(),
@@ -126,38 +124,28 @@ onUnmounted(disconnect)
 <template>
   <div class="animate-fade-in">
     <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <div class="page-header">
       <div>
-        <h1 class="text-3xl font-bold gradient-text">Logs</h1>
-        <p class="mt-1" style="color: var(--text-secondary)">
-          Real-time log viewer
-        </p>
+        <h1 class="page-title">Logs</h1>
+        <p class="page-subtitle">Real-time log viewer</p>
       </div>
 
-      <div class="flex items-center gap-2">
-        <!-- Connection Status -->
-        <span 
-          class="badge"
-          :class="isConnected ? 'badge-success' : 'badge-danger'"
-        >
-          <span 
-            class="w-2 h-2 rounded-full"
-            :class="isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'"
-          ></span>
+      <div class="header-actions">
+        <span class="status-badge" :class="isConnected ? 'connected' : 'disconnected'">
+          <span class="status-dot" :class="{ 'animate-pulse': isConnected }"></span>
           {{ isConnected ? 'Connected' : 'Disconnected' }}
         </span>
 
-        <!-- Controls -->
         <button 
           @click="togglePause"
           class="btn btn-secondary"
-          :class="{ 'ring-2 ring-yellow-500': isPaused }"
+          :class="{ active: isPaused }"
         >
           <Icon :icon="isPaused ? 'mdi:play' : 'mdi:pause'" />
           {{ isPaused ? 'Resume' : 'Pause' }}
         </button>
         
-        <button @click="toggleReverse" class="btn btn-secondary">
+        <button @click="toggleReverse" class="btn-icon" title="Toggle order">
           <Icon :icon="isReversed ? 'mdi:sort-ascending' : 'mdi:sort-descending'" />
         </button>
         
@@ -169,73 +157,263 @@ onUnmounted(disconnect)
     </div>
 
     <!-- Filters -->
-    <div class="flex flex-wrap items-center gap-3 mb-4">
-      <!-- Search -->
-      <div class="relative flex-1 min-w-64">
-        <Icon 
-          icon="mdi:magnify" 
-          class="absolute left-3 top-1/2 -translate-y-1/2" 
-          style="color: var(--text-muted)"
-        />
+    <div class="filters-bar">
+      <div class="search-wrapper">
+        <Icon icon="mdi:magnify" class="search-icon" />
         <input
           v-model="filter"
           type="text"
           placeholder="Search logs..."
-          class="input pl-10"
+          class="search-input"
         />
       </div>
 
-      <!-- Level Filters -->
-      <div class="flex items-center gap-1">
+      <div class="level-filters">
         <button
           v-for="level in levels"
           :key="level"
           @click="setLevelFilter(level)"
-          class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-          :class="levelFilter === level 
-            ? 'bg-blue-500/20 text-blue-400' 
-            : 'bg-gray-500/10 text-gray-400 hover:bg-gray-500/20'"
+          class="level-btn"
+          :class="[levelStyles[level], { active: levelFilter === level }]"
         >
           {{ level }}
         </button>
       </div>
 
-      <!-- Count -->
-      <span class="text-sm" style="color: var(--text-muted)">
-        {{ filteredLogs.length }} logs
-      </span>
+      <span class="log-count">{{ filteredLogs.length }} logs</span>
     </div>
 
     <!-- Log Container -->
-    <div 
-      class="card p-0 overflow-hidden"
-      style="max-height: calc(100vh - 300px)"
-    >
-      <div 
-        class="overflow-auto font-mono text-sm"
-        style="max-height: calc(100vh - 300px)"
-      >
-        <div v-if="filteredLogs.length === 0" class="p-8 text-center" style="color: var(--text-muted)">
-          <Icon icon="mdi:text-box-outline" class="text-4xl mb-2" />
+    <div class="log-container">
+      <div class="log-scroll">
+        <div v-if="filteredLogs.length === 0" class="log-empty">
+          <Icon icon="mdi:text-box-outline" />
           <p>No logs to display</p>
         </div>
 
         <div 
           v-for="log in filteredLogs"
           :key="log.id"
-          class="flex gap-4 px-4 py-2 border-b hover:bg-white/5 transition-colors"
-          style="border-color: var(--border-color)"
+          class="log-entry"
         >
-          <span class="shrink-0" style="color: var(--text-muted)">{{ log.time }}</span>
-          <span 
-            class="shrink-0 w-14 font-medium"
-            :class="levelColors[log.level] || 'text-gray-400'"
-          >
-            {{ log.level }}
-          </span>
-          <span class="break-all" style="color: var(--text-primary)">{{ log.message }}</span>
+          <span class="log-time">{{ log.time }}</span>
+          <span class="log-level" :class="levelStyles[log.level]">{{ log.level }}</span>
+          <span class="log-message">{{ log.message }}</span>
         </div>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .page-header {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.page-subtitle {
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Status Badge */
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border-radius: var(--radius-full);
+}
+
+.status-badge.connected {
+  background: var(--success-muted);
+  color: var(--success);
+}
+
+.status-badge.disconnected {
+  background: var(--danger-muted);
+  color: var(--danger);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.btn-secondary.active {
+  background: var(--warning-muted);
+  border-color: rgba(234, 179, 8, 0.2);
+  color: var(--warning);
+}
+
+/* Filters Bar */
+.filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.search-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-dim);
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.625rem 1rem 0.625rem 2.5rem;
+  font-size: 0.875rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  transition: all var(--transition-fast);
+}
+
+.search-input::placeholder {
+  color: var(--text-dim);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.level-filters {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.level-btn {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: none;
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  opacity: 0.6;
+}
+
+.level-btn:hover {
+  opacity: 0.8;
+}
+
+.level-btn.active {
+  opacity: 1;
+  background: var(--bg-elevated);
+}
+
+.text-muted { color: var(--text-muted); }
+.text-info { color: var(--info); }
+.text-warning { color: var(--warning); }
+.text-danger { color: var(--danger); }
+
+.log-count {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+/* Log Container */
+.log-container {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.log-scroll {
+  max-height: calc(100vh - 320px);
+  overflow-y: auto;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 0.8125rem;
+}
+
+.log-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: var(--text-muted);
+}
+
+.log-empty svg {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.log-entry {
+  display: flex;
+  gap: 1rem;
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition-fast);
+}
+
+.log-entry:hover {
+  background: var(--bg-hover);
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.log-time {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.log-level {
+  flex-shrink: 0;
+  width: 3.5rem;
+  font-weight: 600;
+}
+
+.log-message {
+  flex: 1;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+</style>

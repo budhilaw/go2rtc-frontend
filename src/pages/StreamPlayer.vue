@@ -17,17 +17,9 @@ const showTapoPanel = ref(false)
 
 // Extract camera IP from stream source (for Tapo cameras)
 const cameraIp = computed(() => {
-  // Try to extract IP from stream URL patterns like:
-  // rtsp://user:pass@192.168.1.100:554/stream
-  // tapo://user:pass@192.168.1.100
   const src = streamSrc.value
   const match = src.match(/@([\d.]+)[:\/]/) || src.match(/\/\/([\d.]+)[:\/]/)
   return match ? match[1] : ''
-})
-
-// Check if this looks like a Tapo camera (has IP and name contains 'tapo')
-const isTapoCamera = computed(() => {
-  return cameraIp.value && streamSrc.value.toLowerCase().includes('tapo')
 })
 
 // Fetch stream info on load
@@ -36,38 +28,41 @@ store.fetchStreams()
 
 <template>
   <div class="animate-fade-in">
-    <!-- Back Navigation -->
-    <div class="mb-6">
-      <RouterLink to="/" class="inline-flex items-center gap-2 hover:text-blue-400 transition-colors" style="color: var(--text-secondary)">
-        <Icon icon="mdi:arrow-left" />
-        Back to Dashboard
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+      <RouterLink to="/" class="breadcrumb-link">
+        <Icon icon="mdi:home-outline" />
+        <span>Dashboard</span>
       </RouterLink>
+      <Icon icon="mdi:chevron-right" class="breadcrumb-sep" />
+      <span class="breadcrumb-current">{{ streamSrc }}</span>
     </div>
 
     <!-- Stream Header -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-      <div>
-        <h1 class="text-2xl font-bold" style="color: var(--text-primary)">{{ streamSrc }}</h1>
-        <div class="flex items-center gap-2 mt-2">
+    <div class="stream-header">
+      <div class="stream-info">
+        <h1 class="stream-title">{{ streamSrc }}</h1>
+        <div class="stream-badges">
           <span v-if="streamInfo?.producers?.length" class="badge badge-success">
-            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+            <span class="status-dot online"></span>
             Live
           </span>
           <span v-else class="badge badge-warning">
-            Connecting...
+            <div class="loading-dot"></div>
+            Connecting
           </span>
           <span v-if="streamInfo?.consumers?.length" class="badge badge-info">
+            <Icon icon="mdi:eye-outline" />
             {{ streamInfo.consumers.length }} viewer{{ streamInfo.consumers.length !== 1 ? 's' : '' }}
           </span>
-          <span v-if="isTapoCamera" class="badge bg-green-500/20 text-green-400">
-            <Icon icon="mdi:cctv" class="mr-1" />
+          <span v-if="cameraIp" class="badge badge-primary">
+            <Icon icon="mdi:cctv" />
             Tapo
           </span>
         </div>
       </div>
 
-      <div class="flex items-center gap-2">
-        <!-- Tapo Controls Button -->
+      <div class="stream-actions">
         <button 
           v-if="cameraIp"
           @click="showTapoPanel = !showTapoPanel"
@@ -75,47 +70,44 @@ store.fetchStreams()
           :class="showTapoPanel ? 'btn-primary' : 'btn-secondary'"
         >
           <Icon icon="mdi:cctv" />
-          Camera Controls
+          <span>Camera Controls</span>
         </button>
 
         <RouterLink :to="`/links/${encodeURIComponent(streamSrc)}`" class="btn btn-secondary">
           <Icon icon="mdi:link-variant" />
-          Stream Links
+          <span>Stream Links</span>
         </RouterLink>
       </div>
     </div>
 
     <!-- Main Content -->
-    <div class="flex gap-6">
-      <!-- Video Player -->
-      <div class="flex-1">
-        <div class="max-w-5xl">
-          <VideoPlayer 
-            :src="streamSrc" 
-            :mode="store.playbackMode"
-            :autoplay="true"
-          />
-        </div>
+    <div class="content-layout" :class="{ 'with-panel': showTapoPanel && cameraIp }">
+      <!-- Video Player Column -->
+      <div class="video-column">
+        <VideoPlayer 
+          :src="streamSrc" 
+          :mode="store.playbackMode"
+          :autoplay="true"
+        />
 
-        <!-- Stream Info -->
-        <div v-if="streamInfo" class="max-w-5xl mt-6 grid md:grid-cols-2 gap-4">
+        <!-- Stream Info Cards -->
+        <div v-if="streamInfo" class="info-grid">
           <!-- Producers -->
-          <div class="card">
-            <h3 class="text-lg font-semibold mb-4 flex items-center gap-2" style="color: var(--text-primary)">
-              <Icon icon="mdi:upload" class="text-green-400" />
-              Producers
-            </h3>
-            <div v-if="streamInfo.producers?.length" class="space-y-3">
+          <div class="info-card">
+            <div class="info-header">
+              <div class="info-icon green">
+                <Icon icon="mdi:arrow-up" />
+              </div>
+              <h3 class="info-title">Producers</h3>
+            </div>
+            <div v-if="streamInfo.producers?.length" class="info-list">
               <div 
                 v-for="(producer, idx) in streamInfo.producers" 
                 :key="idx"
-                class="p-3 rounded-lg"
-                style="background: var(--bg-secondary)"
+                class="info-item"
               >
-                <p class="text-sm font-mono break-all" style="color: var(--text-secondary)">
-                  {{ producer.url || 'Unknown source' }}
-                </p>
-                <div v-if="producer.medias" class="flex flex-wrap gap-2 mt-2">
+                <p class="info-url">{{ producer.url || 'Unknown source' }}</p>
+                <div v-if="producer.medias" class="info-badges">
                   <span 
                     v-for="media in producer.medias" 
                     :key="media.kind"
@@ -126,42 +118,36 @@ store.fetchStreams()
                 </div>
               </div>
             </div>
-            <p v-else style="color: var(--text-muted)">No producers</p>
+            <p v-else class="info-empty">No producers connected</p>
           </div>
 
           <!-- Consumers -->
-          <div class="card">
-            <h3 class="text-lg font-semibold mb-4 flex items-center gap-2" style="color: var(--text-primary)">
-              <Icon icon="mdi:download" class="text-blue-400" />
-              Consumers
-            </h3>
-            <div v-if="streamInfo.consumers?.length" class="space-y-3">
+          <div class="info-card">
+            <div class="info-header">
+              <div class="info-icon blue">
+                <Icon icon="mdi:arrow-down" />
+              </div>
+              <h3 class="info-title">Consumers</h3>
+            </div>
+            <div v-if="streamInfo.consumers?.length" class="info-list">
               <div 
                 v-for="(consumer, idx) in streamInfo.consumers" 
                 :key="idx"
-                class="p-3 rounded-lg"
-                style="background: var(--bg-secondary)"
+                class="info-item"
               >
-                <p class="text-sm" style="color: var(--text-secondary)">
-                  {{ consumer.remote_addr || 'Unknown' }}
-                </p>
-                <p v-if="consumer.user_agent" class="text-xs mt-1" style="color: var(--text-muted)">
-                  {{ consumer.user_agent }}
-                </p>
+                <p class="info-addr">{{ consumer.remote_addr || 'Unknown' }}</p>
+                <p v-if="consumer.user_agent" class="info-agent">{{ consumer.user_agent }}</p>
               </div>
             </div>
-            <p v-else style="color: var(--text-muted)">No consumers</p>
+            <p v-else class="info-empty">No consumers connected</p>
           </div>
         </div>
       </div>
 
-      <!-- Tapo Control Panel (Side Panel) -->
+      <!-- Tapo Control Panel -->
       <transition name="slide">
-        <div 
-          v-if="showTapoPanel && cameraIp" 
-          class="shrink-0 w-80"
-        >
-          <div class="card sticky top-24">
+        <div v-if="showTapoPanel && cameraIp" class="panel-column">
+          <div class="tapo-panel-wrapper">
             <TapoControlPanel 
               :camera-ip="cameraIp"
               :stream-name="streamSrc"
@@ -175,14 +161,235 @@ store.fetchStreams()
 </template>
 
 <style scoped>
+/* Breadcrumb */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+}
+
+.breadcrumb-link {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.breadcrumb-link:hover {
+  color: var(--accent-primary);
+}
+
+.breadcrumb-sep {
+  color: var(--text-dim);
+  font-size: 1rem;
+}
+
+.breadcrumb-current {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Stream Header */
+.stream-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .stream-header {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+.stream-info {
+  min-width: 0;
+}
+
+.stream-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+  word-break: break-word;
+}
+
+.stream-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.stream-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.loading-dot {
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Content Layout */
+.content-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .content-layout {
+    flex-direction: row;
+  }
+  
+  .content-layout.with-panel .video-column {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.video-column {
+  flex: 1;
+  min-width: 0;
+}
+
+.panel-column {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+@media (min-width: 1024px) {
+  .panel-column {
+    width: 22rem;
+  }
+}
+
+.tapo-panel-wrapper {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  position: sticky;
+  top: 5rem;
+}
+
+/* Info Grid */
+.info-grid {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .info-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.info-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem;
+}
+
+.info-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.info-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.125rem;
+}
+
+.info-icon.green {
+  background: var(--success-muted);
+  color: var(--success);
+}
+
+.info-icon.blue {
+  background: var(--info-muted);
+  color: var(--info);
+}
+
+.info-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.info-item {
+  padding: 0.875rem;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+}
+
+.info-url {
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  word-break: break-all;
+  margin-bottom: 0.5rem;
+}
+
+.info-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.info-addr {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.info-agent {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.info-empty {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  padding: 1rem 0;
+}
+
+/* Transitions */
 .slide-enter-active,
 .slide-leave-active {
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
 }
 
 .slide-enter-from,
 .slide-leave-to {
   opacity: 0;
-  transform: translateX(20px);
+  transform: translateX(16px);
 }
 </style>

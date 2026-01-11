@@ -9,7 +9,6 @@ const isLoading = ref(true)
 const isSaving = ref(false)
 const error = ref<string | null>(null)
 const success = ref<string | null>(null)
-
 const hasChanges = ref(false)
 
 async function loadConfig() {
@@ -82,15 +81,13 @@ onMounted(loadConfig)
 <template>
   <div class="animate-fade-in">
     <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <div class="page-header">
       <div>
-        <h1 class="text-3xl font-bold gradient-text">Configuration</h1>
-        <p class="mt-1" style="color: var(--text-secondary)">
-          Edit go2rtc.yaml configuration
-        </p>
+        <h1 class="page-title">Configuration</h1>
+        <p class="page-subtitle">Edit go2rtc.yaml configuration</p>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="header-actions">
         <button 
           v-if="hasChanges"
           @click="resetConfig"
@@ -105,7 +102,7 @@ onMounted(loadConfig)
           :disabled="isSaving || !hasChanges"
         >
           <Icon v-if="isSaving" icon="mdi:loading" class="animate-spin" />
-          <Icon v-else icon="mdi:content-save" />
+          <Icon v-else icon="mdi:content-save-outline" />
           Save
         </button>
         <button 
@@ -121,85 +118,71 @@ onMounted(loadConfig)
     </div>
 
     <!-- Status Messages -->
-    <div v-if="error" class="mb-4 p-4 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-3">
-      <Icon icon="mdi:alert-circle" class="text-red-400 text-xl" />
-      <p class="text-red-400">{{ error }}</p>
+    <div v-if="error" class="alert alert-error">
+      <Icon icon="mdi:alert-circle-outline" />
+      <span>{{ error }}</span>
     </div>
 
-    <div v-if="success" class="mb-4 p-4 rounded-lg bg-green-500/10 border border-green-500/30 flex items-center gap-3">
-      <Icon icon="mdi:check-circle" class="text-green-400 text-xl" />
-      <p class="text-green-400">{{ success }}</p>
+    <div v-if="success" class="alert alert-success">
+      <Icon icon="mdi:check-circle-outline" />
+      <span>{{ success }}</span>
     </div>
 
     <!-- Loading State -->
-    <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
-      <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-      <p style="color: var(--text-secondary)">Loading configuration...</p>
+    <div v-if="isLoading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Loading configuration...</p>
     </div>
 
     <!-- Editor -->
-    <div v-else class="card p-0 overflow-hidden">
-      <div class="flex items-center justify-between px-4 py-3 border-b" style="border-color: var(--border-color); background: var(--bg-secondary)">
-        <div class="flex items-center gap-2">
-          <Icon icon="mdi:file-code" style="color: var(--text-muted)" />
-          <span class="text-sm font-medium" style="color: var(--text-secondary)">go2rtc.yaml</span>
+    <div v-else class="editor-container">
+      <div class="editor-header">
+        <div class="editor-file">
+          <Icon icon="mdi:file-code-outline" />
+          <span>go2rtc.yaml</span>
         </div>
-        <div class="flex items-center gap-2">
-          <span 
-            v-if="hasChanges" 
-            class="badge badge-warning"
-          >
-            <Icon icon="mdi:circle-small" />
+        <div class="editor-status">
+          <span v-if="hasChanges" class="unsaved-badge">
+            <span class="unsaved-dot"></span>
             Unsaved changes
           </span>
-          <span class="text-xs" style="color: var(--text-muted)">YAML</span>
+          <span class="file-type">YAML</span>
         </div>
       </div>
 
-      <div class="relative">
+      <div class="editor-body">
         <textarea
           :value="config"
           @input="handleInput"
-          class="w-full min-h-[600px] p-4 font-mono text-sm resize-y focus:outline-none"
-          style="background: var(--bg-primary); color: var(--text-primary); border: none;"
+          class="editor-textarea"
           spellcheck="false"
         />
-        
-        <!-- Line numbers (decorative) -->
-        <div 
-          class="absolute top-0 left-0 p-4 pointer-events-none select-none font-mono text-sm"
-          style="color: var(--text-muted)"
-        >
-          <div v-for="i in config.split('\n').length" :key="i" class="h-6">
-            {{ i }}
-          </div>
-        </div>
       </div>
     </div>
 
     <!-- Help Section -->
-    <div class="mt-6 grid md:grid-cols-2 gap-4">
-      <div class="card">
-        <h3 class="font-semibold mb-2 flex items-center gap-2" style="color: var(--text-primary)">
-          <Icon icon="mdi:lightbulb" class="text-yellow-400" />
+    <div class="help-grid">
+      <div class="help-card">
+        <h3 class="help-title">
+          <Icon icon="mdi:lightbulb-outline" class="text-warning" />
           Tips
         </h3>
-        <ul class="text-sm space-y-2" style="color: var(--text-secondary)">
-          <li>• Changes require a restart to take effect</li>
-          <li>• Use YAML syntax for configuration</li>
-          <li>• Backup your config before major changes</li>
+        <ul class="help-list">
+          <li>Changes require a restart to take effect</li>
+          <li>Use YAML syntax for configuration</li>
+          <li>Backup your config before major changes</li>
         </ul>
       </div>
 
-      <div class="card">
-        <h3 class="font-semibold mb-2 flex items-center gap-2" style="color: var(--text-primary)">
-          <Icon icon="mdi:book-open-variant" class="text-blue-400" />
+      <div class="help-card">
+        <h3 class="help-title">
+          <Icon icon="mdi:book-open-outline" class="text-info" />
           Documentation
         </h3>
         <a 
           href="https://github.com/AlexxIT/go2rtc/wiki" 
           target="_blank"
-          class="text-sm text-blue-400 hover:underline flex items-center gap-1"
+          class="help-link"
         >
           View go2rtc Wiki
           <Icon icon="mdi:open-in-new" />
@@ -208,3 +191,235 @@ onMounted(loadConfig)
     </div>
   </div>
 </template>
+
+<style scoped>
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .page-header {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.page-subtitle {
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Alerts */
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.5rem;
+  font-size: 0.9375rem;
+}
+
+.alert-error {
+  background: var(--danger-muted);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.alert-success {
+  background: var(--success-muted);
+  color: var(--success);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+/* Loading */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5rem 2rem;
+}
+
+.loading-spinner {
+  width: 3rem;
+  height: 3rem;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+.loading-state p {
+  color: var(--text-secondary);
+}
+
+/* Editor */
+.editor-container {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.25rem;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+}
+
+.editor-file {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.editor-status {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.unsaved-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--warning);
+}
+
+.unsaved-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warning);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.file-type {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.editor-body {
+  position: relative;
+}
+
+.editor-textarea {
+  width: 100%;
+  min-height: 500px;
+  padding: 1.25rem;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  background: var(--bg-surface);
+  border: none;
+  color: var(--text-primary);
+  resize: vertical;
+}
+
+.editor-textarea:focus {
+  outline: none;
+}
+
+/* Help Section */
+.help-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .help-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.help-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem;
+}
+
+.help-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.875rem;
+}
+
+.text-warning {
+  color: var(--warning);
+}
+
+.text-info {
+  color: var(--info);
+}
+
+.help-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.help-list li {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  padding-left: 1rem;
+  position: relative;
+}
+
+.help-list li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--text-dim);
+}
+
+.help-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  color: var(--accent-primary);
+  text-decoration: none;
+  transition: opacity var(--transition-fast);
+}
+
+.help-link:hover {
+  opacity: 0.8;
+}
+</style>

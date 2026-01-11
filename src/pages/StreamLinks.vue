@@ -23,7 +23,7 @@ const links = computed<StreamLink[]>(() => [
     name: 'WebRTC',
     icon: 'mdi:video-wireless',
     url: `${window.location.origin}/stream/${encodeURIComponent(streamSrc.value)}`,
-    color: 'blue',
+    color: 'purple',
     description: 'Low latency browser playback'
   },
   {
@@ -45,15 +45,15 @@ const links = computed<StreamLink[]>(() => [
   {
     id: 'mp4',
     name: 'MP4',
-    icon: 'mdi:file-video',
+    icon: 'mdi:file-video-outline',
     url: `${window.location.origin}/api/stream.mp4?src=${encodeURIComponent(streamSrc.value)}`,
-    color: 'purple',
+    color: 'blue',
     description: 'Continuous MP4 stream'
   },
   {
     id: 'mjpeg',
     name: 'MJPEG',
-    icon: 'mdi:image-multiple',
+    icon: 'mdi:image-multiple-outline',
     url: `${window.location.origin}/api/stream.mjpeg?src=${encodeURIComponent(streamSrc.value)}`,
     color: 'cyan',
     description: 'Motion JPEG stream'
@@ -61,20 +61,20 @@ const links = computed<StreamLink[]>(() => [
   {
     id: 'snapshot',
     name: 'Snapshot',
-    icon: 'mdi:camera',
+    icon: 'mdi:camera-outline',
     url: `${window.location.origin}/api/frame.jpeg?src=${encodeURIComponent(streamSrc.value)}`,
     color: 'yellow',
     description: 'Single frame capture'
   },
 ])
 
-const colorClasses: Record<string, string> = {
-  blue: 'bg-blue-500/20 text-blue-400',
-  green: 'bg-green-500/20 text-green-400',
-  orange: 'bg-orange-500/20 text-orange-400',
-  purple: 'bg-purple-500/20 text-purple-400',
-  cyan: 'bg-cyan-500/20 text-cyan-400',
-  yellow: 'bg-yellow-500/20 text-yellow-400',
+const colorStyles: Record<string, { bg: string; text: string }> = {
+  purple: { bg: 'var(--accent-primary-muted)', text: 'var(--accent-primary)' },
+  green: { bg: 'var(--success-muted)', text: 'var(--success)' },
+  orange: { bg: 'var(--warning-muted)', text: 'var(--warning)' },
+  blue: { bg: 'var(--info-muted)', text: 'var(--info)' },
+  cyan: { bg: 'var(--accent-secondary-muted)', text: 'var(--accent-secondary)' },
+  yellow: { bg: 'rgba(234, 179, 8, 0.15)', text: '#eab308' },
 }
 
 async function copyToClipboard(link: StreamLink) {
@@ -94,22 +94,22 @@ function openLink(url: string) {
 
 <template>
   <div class="animate-fade-in">
-    <!-- Back Navigation -->
-    <div class="mb-6">
-      <RouterLink to="/" class="inline-flex items-center gap-2 hover:text-blue-400 transition-colors" style="color: var(--text-secondary)">
-        <Icon icon="mdi:arrow-left" />
-        Back to Dashboard
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+      <RouterLink to="/" class="breadcrumb-link">
+        <Icon icon="mdi:home-outline" />
+        <span>Dashboard</span>
       </RouterLink>
+      <Icon icon="mdi:chevron-right" class="breadcrumb-sep" />
+      <span class="breadcrumb-current">Stream Links</span>
     </div>
 
     <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div class="page-header">
       <div>
-        <h1 class="text-3xl font-bold gradient-text">Stream Links</h1>
-        <p class="mt-2 text-lg" style="color: var(--text-primary)">{{ streamSrc }}</p>
-        <p class="mt-1" style="color: var(--text-secondary)">
-          Access this stream in various formats
-        </p>
+        <h1 class="page-title">Stream Links</h1>
+        <p class="stream-name">{{ streamSrc }}</p>
+        <p class="page-subtitle">Access this stream in various formats</p>
       </div>
 
       <RouterLink 
@@ -122,59 +122,45 @@ function openLink(url: string) {
     </div>
 
     <!-- Preview -->
-    <div class="mb-8">
-      <div class="aspect-video max-w-2xl rounded-xl overflow-hidden" style="background: var(--bg-secondary)">
+    <div class="preview-section">
+      <div class="preview-container">
         <img 
           :src="streamsApi.getSnapshotUrl(streamSrc)"
           :alt="streamSrc"
-          class="w-full h-full object-contain"
+          class="preview-image"
           loading="lazy"
         />
       </div>
     </div>
 
     <!-- Links Grid -->
-    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="links-grid">
       <div 
         v-for="link in links"
         :key="link.id"
-        class="card"
+        class="link-card"
       >
-        <div class="flex items-start gap-4">
+        <div class="link-header">
           <div 
-            class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-            :class="colorClasses[link.color]"
+            class="link-icon"
+            :style="{ background: colorStyles[link.color].bg, color: colorStyles[link.color].text }"
           >
-            <Icon :icon="link.icon" class="text-2xl" />
+            <Icon :icon="link.icon" />
           </div>
-          
-          <div class="flex-1 min-w-0">
-            <h3 class="font-semibold" style="color: var(--text-primary)">{{ link.name }}</h3>
-            <p class="text-sm mt-0.5" style="color: var(--text-muted)">{{ link.description }}</p>
+          <div class="link-info">
+            <h3 class="link-name">{{ link.name }}</h3>
+            <p class="link-desc">{{ link.description }}</p>
           </div>
         </div>
 
-        <!-- URL -->
-        <div 
-          class="mt-4 p-3 rounded-lg font-mono text-xs break-all"
-          style="background: var(--bg-secondary); color: var(--text-secondary)"
-        >
-          {{ link.url }}
-        </div>
+        <div class="link-url">{{ link.url }}</div>
 
-        <!-- Actions -->
-        <div class="flex gap-2 mt-4">
-          <button 
-            @click="copyToClipboard(link)"
-            class="btn btn-secondary flex-1"
-          >
+        <div class="link-actions">
+          <button @click="copyToClipboard(link)" class="btn btn-secondary flex-1">
             <Icon :icon="copiedLink === link.id ? 'mdi:check' : 'mdi:content-copy'" />
             {{ copiedLink === link.id ? 'Copied!' : 'Copy' }}
           </button>
-          <button 
-            @click="openLink(link.url)"
-            class="btn btn-ghost"
-          >
+          <button @click="openLink(link.url)" class="btn-icon">
             <Icon icon="mdi:open-in-new" />
           </button>
         </div>
@@ -182,30 +168,243 @@ function openLink(url: string) {
     </div>
 
     <!-- API Endpoints -->
-    <div class="mt-8">
-      <h2 class="text-xl font-bold mb-4" style="color: var(--text-primary)">API Endpoints</h2>
-      <div class="card">
-        <div class="space-y-3">
-          <div class="flex items-center justify-between py-2 border-b" style="border-color: var(--border-color)">
-            <span style="color: var(--text-secondary)">Stream Info (JSON)</span>
-            <code class="text-sm px-2 py-1 rounded" style="background: var(--bg-secondary); color: var(--accent-primary)">
-              /api/streams?src={{ streamSrc }}
-            </code>
-          </div>
-          <div class="flex items-center justify-between py-2 border-b" style="border-color: var(--border-color)">
-            <span style="color: var(--text-secondary)">WebRTC Offer</span>
-            <code class="text-sm px-2 py-1 rounded" style="background: var(--bg-secondary); color: var(--accent-primary)">
-              POST /api/webrtc?src={{ streamSrc }}
-            </code>
-          </div>
-          <div class="flex items-center justify-between py-2">
-            <span style="color: var(--text-secondary)">WebSocket</span>
-            <code class="text-sm px-2 py-1 rounded" style="background: var(--bg-secondary); color: var(--accent-primary)">
-              /api/ws?src={{ streamSrc }}
-            </code>
-          </div>
+    <div class="api-section">
+      <h2 class="section-title">API Endpoints</h2>
+      <div class="api-card">
+        <div class="api-row">
+          <span class="api-label">Stream Info (JSON)</span>
+          <code class="api-code">/api/streams?src={{ streamSrc }}</code>
+        </div>
+        <div class="api-row">
+          <span class="api-label">WebRTC Offer</span>
+          <code class="api-code">POST /api/webrtc?src={{ streamSrc }}</code>
+        </div>
+        <div class="api-row last">
+          <span class="api-label">WebSocket</span>
+          <code class="api-code">/api/ws?src={{ streamSrc }}</code>
         </div>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Breadcrumb */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+}
+
+.breadcrumb-link {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.breadcrumb-link:hover {
+  color: var(--accent-primary);
+}
+
+.breadcrumb-sep {
+  color: var(--text-dim);
+}
+
+.breadcrumb-current {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Header */
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+  .page-header {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stream-name {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-top: 0.5rem;
+}
+
+.page-subtitle {
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+/* Preview */
+.preview-section {
+  margin-bottom: 2rem;
+}
+
+.preview-container {
+  max-width: 40rem;
+  aspect-ratio: 16/9;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Links Grid */
+.links-grid {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+  .links-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .links-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.link-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem;
+  transition: border-color var(--transition-fast);
+}
+
+.link-card:hover {
+  border-color: var(--border-hover);
+}
+
+.link-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.link-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.375rem;
+  flex-shrink: 0;
+}
+
+.link-info {
+  min-width: 0;
+}
+
+.link-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.link-desc {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-top: 0.125rem;
+}
+
+.link-url {
+  padding: 0.75rem;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  word-break: break-all;
+  margin-bottom: 1rem;
+}
+
+.link-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+/* API Section */
+.api-section {
+  margin-top: 2rem;
+}
+
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+.api-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.api-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.api-row.last {
+  border-bottom: none;
+}
+
+.api-label {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.api-code {
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 0.8125rem;
+  padding: 0.375rem 0.625rem;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  color: var(--accent-primary);
+}
+</style>

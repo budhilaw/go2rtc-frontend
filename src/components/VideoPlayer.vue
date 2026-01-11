@@ -8,6 +8,7 @@ const props = defineProps<{
   src: string
   mode?: PlaybackMode
   autoplay?: boolean
+  showPtz?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -27,6 +28,8 @@ const showControls = ref(true)
 const volume = ref(1)
 const isMuted = ref(false)
 const connectionState = ref<string>('')
+const showPtzPanel = ref(false)
+const ptzLoading = ref(false)
 
 // WebRTC
 let pc: RTCPeerConnection | null = null
@@ -41,6 +44,42 @@ const baseUrl = computed(() => {
   // Use window.location to get the actual host when proxied
   return ''
 })
+
+// PTZ Controls
+type PtzCommand = 'left' | 'right' | 'up' | 'down' | 'zoom_in' | 'zoom_out' | 'home'
+
+async function sendPtzCommand(command: PtzCommand) {
+  ptzLoading.value = true
+  try {
+    const response = await fetch(`${baseUrl.value}/api/ptz?src=${encodeURIComponent(props.src)}&command=${command}`, {
+      method: 'POST'
+    })
+    if (!response.ok) {
+      console.error('PTZ command failed:', response.statusText)
+    }
+  } catch (e) {
+    console.error('PTZ error:', e)
+  } finally {
+    ptzLoading.value = false
+  }
+}
+
+// Continuous PTZ (hold button)
+let ptzInterval: number | null = null
+
+function startPtz(command: PtzCommand) {
+  sendPtzCommand(command)
+  ptzInterval = window.setInterval(() => {
+    sendPtzCommand(command)
+  }, 200)
+}
+
+function stopPtz() {
+  if (ptzInterval) {
+    clearInterval(ptzInterval)
+    ptzInterval = null
+  }
+}
 
 async function startWebRTC() {
   isLoading.value = true
@@ -367,6 +406,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   stop()
+  stopPtz()
 })
 
 defineExpose({ play, stop, switchMode })
@@ -413,6 +453,105 @@ defineExpose({ play, stop, switchMode })
           <Icon icon="mdi:refresh" />
           Retry
         </button>
+      </div>
+    </transition>
+
+    <!-- PTZ Control Panel -->
+    <transition name="fade">
+      <div 
+        v-if="showPtzPanel && isPlaying"
+        class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-auto"
+      >
+        <div class="glass-card p-3 rounded-xl">
+          <div class="grid grid-cols-3 gap-1 mb-2">
+            <!-- Top row -->
+            <div></div>
+            <button 
+              @mousedown="startPtz('up')"
+              @mouseup="stopPtz"
+              @mouseleave="stopPtz"
+              @touchstart.prevent="startPtz('up')"
+              @touchend="stopPtz"
+              class="ptz-btn"
+              title="Tilt Up"
+            >
+              <Icon icon="mdi:chevron-up" class="text-xl" />
+            </button>
+            <div></div>
+            
+            <!-- Middle row -->
+            <button 
+              @mousedown="startPtz('left')"
+              @mouseup="stopPtz"
+              @mouseleave="stopPtz"
+              @touchstart.prevent="startPtz('left')"
+              @touchend="stopPtz"
+              class="ptz-btn"
+              title="Pan Left"
+            >
+              <Icon icon="mdi:chevron-left" class="text-xl" />
+            </button>
+            <button 
+              @click="sendPtzCommand('home')"
+              class="ptz-btn"
+              title="Home Position"
+            >
+              <Icon icon="mdi:home" class="text-lg" />
+            </button>
+            <button 
+              @mousedown="startPtz('right')"
+              @mouseup="stopPtz"
+              @mouseleave="stopPtz"
+              @touchstart.prevent="startPtz('right')"
+              @touchend="stopPtz"
+              class="ptz-btn"
+              title="Pan Right"
+            >
+              <Icon icon="mdi:chevron-right" class="text-xl" />
+            </button>
+            
+            <!-- Bottom row -->
+            <div></div>
+            <button 
+              @mousedown="startPtz('down')"
+              @mouseup="stopPtz"
+              @mouseleave="stopPtz"
+              @touchstart.prevent="startPtz('down')"
+              @touchend="stopPtz"
+              class="ptz-btn"
+              title="Tilt Down"
+            >
+              <Icon icon="mdi:chevron-down" class="text-xl" />
+            </button>
+            <div></div>
+          </div>
+          
+          <!-- Zoom controls -->
+          <div class="flex justify-center gap-2 pt-2 border-t border-white/10">
+            <button 
+              @mousedown="startPtz('zoom_out')"
+              @mouseup="stopPtz"
+              @mouseleave="stopPtz"
+              @touchstart.prevent="startPtz('zoom_out')"
+              @touchend="stopPtz"
+              class="ptz-btn"
+              title="Zoom Out"
+            >
+              <Icon icon="mdi:minus" class="text-lg" />
+            </button>
+            <button 
+              @mousedown="startPtz('zoom_in')"
+              @mouseup="stopPtz"
+              @mouseleave="stopPtz"
+              @touchstart.prevent="startPtz('zoom_in')"
+              @touchend="stopPtz"
+              class="ptz-btn"
+              title="Zoom In"
+            >
+              <Icon icon="mdi:plus" class="text-lg" />
+            </button>
+          </div>
+        </div>
       </div>
     </transition>
 
@@ -484,6 +623,16 @@ defineExpose({ play, stop, switchMode })
 
             <!-- Right Controls -->
             <div class="flex items-center gap-2">
+              <!-- PTZ Toggle -->
+              <button 
+                @click="showPtzPanel = !showPtzPanel"
+                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                :class="showPtzPanel ? 'bg-blue-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white'"
+                title="PTZ Controls"
+              >
+                <Icon icon="mdi:gamepad-variant" class="text-lg" />
+              </button>
+              
               <button 
                 @click="toggleFullscreen"
                 class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
@@ -516,5 +665,28 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 50%;
   background: white;
   cursor: pointer;
+}
+
+.ptz-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  border: none;
+}
+
+.ptz-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.ptz-btn:active {
+  background: rgba(59, 130, 246, 0.5);
+  transform: scale(0.95);
 }
 </style>

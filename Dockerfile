@@ -24,13 +24,13 @@ COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 # Copy built files
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Default go2rtc backend - override with: docker run -e GO2RTC_API_URL=http://your-ip:1984
+# Default go2rtc backend - override with environment variables
 ENV GO2RTC_API_URL=http://host.docker.internal:1984
+# Base64 encoded username:password - generate with: echo -n "user:pass" | base64
+ENV GO2RTC_AUTH=""
 
-# IMPORTANT: Tell envsubst to ONLY substitute GO2RTC_API_URL (not $host, $uri, etc)
-ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx/conf.d
-ENV NGINX_ENVSUBST_TEMPLATE_SUFFIX=.template
-ENV NGINX_ENVSUBST_FILTER=GO2RTC_API_URL
+# Tell envsubst to ONLY substitute these variables (not $host, $uri, etc)
+ENV NGINX_ENVSUBST_FILTER=GO2RTC_API_URL,GO2RTC_AUTH
 
 # Expose port
 EXPOSE 80

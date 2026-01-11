@@ -18,14 +18,17 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine
 
-# Copy custom nginx config
-COPY nginx.conf /etc/nginx/nginx.conf
+# Copy nginx template
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 
 # Copy built files
 COPY --from=build /app/dist /usr/share/nginx/html
 
+# Default go2rtc backend - override with: docker run -e GO2RTC_API_URL=http://your-ip:1984
+ENV GO2RTC_API_URL=http://host.docker.internal:1984
+
 # Expose port
 EXPOSE 80
 
-# Start nginx
+# nginx:alpine auto-runs envsubst on /etc/nginx/templates/*.template files
 CMD ["nginx", "-g", "daemon off;"]

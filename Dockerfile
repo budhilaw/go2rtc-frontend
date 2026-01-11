@@ -27,8 +27,12 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # Default go2rtc backend - override with: docker run -e GO2RTC_API_URL=http://your-ip:1984
 ENV GO2RTC_API_URL=http://host.docker.internal:1984
 
+# IMPORTANT: Tell envsubst to ONLY substitute GO2RTC_API_URL (not $host, $uri, etc)
+ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx/conf.d
+ENV NGINX_ENVSUBST_TEMPLATE_SUFFIX=.template
+ENV NGINX_ENVSUBST_FILTER=GO2RTC_API_URL
+
 # Expose port
 EXPOSE 80
 
-# nginx:alpine auto-runs envsubst on /etc/nginx/templates/*.template files
 CMD ["nginx", "-g", "daemon off;"]

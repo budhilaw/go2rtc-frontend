@@ -29,9 +29,6 @@ ENV GO2RTC_API_URL=http://host.docker.internal:1984
 # Base64 encoded username:password - generate with: echo -n "user:pass" | base64
 ENV GO2RTC_AUTH=""
 
-# Tell envsubst to ONLY substitute these variables (not $host, $uri, etc)
-ENV NGINX_ENVSUBST_FILTER=GO2RTC_API_URL,GO2RTC_AUTH
-
 # Expose port
 EXPOSE 80
 

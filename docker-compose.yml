@@ -1,0 +1,25 @@
+services:
+  go2rtc-frontend:
+    build: .
+    container_name: go2rtc-frontend
+    ports:
+      - "3000:80"
+    environment:
+      - GO2RTC_API_URL=${GO2RTC_API_URL:-http://go2rtc:1984}
+    restart: unless-stopped
+    networks:
+      - go2rtc-network
+
+  # Uncomment if you want to run go2rtc in the same compose
+  # go2rtc:
+  #   image: alexxit/go2rtc:latest
+  #   container_name: go2rtc
+  #   network_mode: host
+  #   privileged: true
+  #   volumes:
+  #     - ./config:/config
+  #   restart: unless-stopped
+
+networks:
+  go2rtc-network:
+    driver: bridge

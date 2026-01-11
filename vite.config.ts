@@ -19,9 +19,9 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       'process.env': {
-        TAPO_API_URL: process.env.TAPO_API_URL,
-        TAPO_USERNAME: process.env.TAPO_USERNAME,
-        TAPO_PASSWORD: process.env.TAPO_PASSWORD,
+        TAPO_API_URL: JSON.stringify(env.TAPO_API_URL),
+        TAPO_USERNAME: JSON.stringify(env.TAPO_USERNAME),
+        TAPO_PASSWORD: JSON.stringify(env.TAPO_PASSWORD),
       }
     },
     server: {

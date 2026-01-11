@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
-import { createTapoApi, type TapoPreset, type TapoDeviceInfo } from '@/services/tapo'
+import type { TapoPreset, TapoDeviceInfo } from '@/services/tapo'
+import { useTapo } from '@/composables/useTapo'
 
 const props = defineProps<{
   cameraIp: string
@@ -12,21 +13,15 @@ const emit = defineEmits<{
   close: []
 }>()
 
-// Tapo API config from env or defaults
-const tapoApiUrl = ref(localStorage.getItem('tapoApiUrl') || process.env.TAPO_API_URL || 'http://localhost:3000')
-const tapoUsername = ref(localStorage.getItem('tapoUsername') || process.env.TAPO_USERNAME || '')
-const tapoPassword = ref(localStorage.getItem('tapoPassword') || process.env.TAPO_PASSWORD || '')
-
-const isConfigured = computed(() => tapoUsername.value && tapoPassword.value)
-
-// Create API instance
-const api = computed(() => {
-  if (!isConfigured.value) return null
-  return createTapoApi(tapoApiUrl.value, {
-    username: tapoUsername.value,
-    password: tapoPassword.value,
-  })
-})
+// Use Tapo Composable
+const { 
+  tapoApiUrl, 
+  tapoUsername, 
+  tapoPassword, 
+  isConfigured, 
+  api, 
+  saveConfig: saveTapoConfig 
+} = useTapo()
 
 // State
 const activeTab = ref<'ptz' | 'presets' | 'settings' | 'config'>('ptz')
@@ -266,9 +261,7 @@ async function rebootCamera() {
 
 // Config
 function saveConfig() {
-  localStorage.setItem('tapoApiUrl', tapoApiUrl.value)
-  localStorage.setItem('tapoUsername', tapoUsername.value)
-  localStorage.setItem('tapoPassword', tapoPassword.value)
+  saveTapoConfig(tapoApiUrl.value, tapoUsername.value, tapoPassword.value)
   loadDeviceInfo()
 }
 

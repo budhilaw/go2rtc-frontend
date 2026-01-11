@@ -6,6 +6,8 @@ import VideoPlayer from '@/components/VideoPlayer.vue'
 import TapoControlPanel from '@/components/TapoControlPanel.vue'
 import { useAppStore } from '@/stores/app'
 
+import { useTapo } from '@/composables/useTapo'
+
 const route = useRoute()
 const store = useAppStore()
 
@@ -18,8 +20,71 @@ const showTapoPanel = ref(false)
 // Extract camera IP from stream source (for Tapo cameras)
 const cameraIp = computed(() => {
   const src = streamSrc.value
-  const match = src.match(/@([\d.]+)[:\/]/) || src.match(/\/\/([\d.]+)[:\/]/)
-  return match ? match[1] : ''
+  
+  // 1. Try to find IP in the stream name itself (e.g. if name is URL-like)
+  let match = src.match(/@([\d.]+)[:\/]/) || src.match(/\/\/([\d.]+)[:\/]/)
+  if (match) return match[1]
+
+  // 2. If not found, try to look up the stream info from the store and check producers
+  const info = streamInfo.value
+  
+  if (info && info.producers) {
+    for (const producer of info.producers) {
+      // Check for URL (RTSP/HTTP sources)
+      if (producer.url) {
+        match = producer.url.match(/@([\d.]+)[:\/]/) || producer.url.match(/\/\/([\d.]+)[:\/]/)
+        if (match) return match[1]
+      }
+      
+      // Check for remote_addr (Tapo/other sources)
+      if (producer.remote_addr) {
+        // Handle "IP:PORT" or just "IP"
+        // Also handling IPv6 just in case, though simpler regex for IPv4 is usually sufficient for these cameras
+        const ip = producer.remote_addr.split(':')[0]
+        if (ip && ip.match(/^[\d.]+$/)) {
+             console.log('[StreamPlayer] Found IP from remote_addr:', ip)
+             return ip
+        }
+      }
+    }
+  }
+  
+  console.log('[StreamPlayer] No IP found for stream:', src)
+  return ''
+})
+
+const isTapoCamera = computed(() => !!cameraIp.value)
+
+// Use Tapo Composable
+const { api: tapoApi } = useTapo()
+
+// PTZ Handling
+async function handlePtz(command: 'up' | 'down' | 'left' | 'right' | 'zoom_in' | 'zoom_out') {
+  if (isTapoCamera.value && tapoApi.value && cameraIp.value) {
+    const directions = {
+      up: 0,
+      right: 90,
+      down: 180,
+      left: 270,
+    }
+    
+    try {
+      if (command in directions) {
+        // Use step for discrete movement
+        await tapoApi.value.ptzStep(cameraIp.value, directions[command as keyof typeof directions])
+      } else {
+        // Tapo zoom is digital only via StreamPlayer mostly, but if API supports it:
+        console.warn('Zoom not implemented for Tapo via quick controls')
+      }
+    } catch (e) {
+      console.error('Tapo PTZ Error:', e)
+    }
+  }
+}
+
+// We will only pass onPtz if it IS a Tapo camera
+const ptzHandler = computed(() => {
+  return isTapoCamera.value ? handlePtz : undefined
 })
 
 // Fetch stream info on load
@@ -88,6 +153,8 @@ store.fetchStreams()
           :src="streamSrc" 
           :mode="store.playbackMode"
           :autoplay="true"
+          :camera-ip="cameraIp"
+          :on-ptz="ptzHandler"
         />
 
         <!-- Stream Info Cards -->

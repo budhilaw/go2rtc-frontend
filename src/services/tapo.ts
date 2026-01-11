@@ -71,6 +71,24 @@ export function createTapoApi(baseUrl: string, credentials: TapoCredentials) {
         },
     })
 
+    // Log requests
+    api.interceptors.request.use(request => {
+        const fullUrl = `${request.baseURL || baseUrl}${request.url}`
+        console.log(`[Tapo API] ${request.method?.toUpperCase()} ${fullUrl}`, request.data || '')
+        return request
+    })
+
+    api.interceptors.response.use(
+        response => {
+            console.log(`[Tapo API] Success: ${response.status} ${response.statusText}`)
+            return response
+        },
+        error => {
+            console.error('[Tapo API] Error:', error.response?.status, error.response?.data || error.message)
+            return Promise.reject(error)
+        }
+    )
+
     return {
         // Device Info
         async getInfo(ip: string): Promise<TapoDeviceInfo> {
@@ -90,11 +108,15 @@ export function createTapoApi(baseUrl: string, credentials: TapoCredentials) {
 
         // PTZ
         async ptzMove(ip: string, x: number, y: number): Promise<void> {
-            await api.post(`/api/cameras/${ip}/ptz/move`, { x, y })
+            const endpoint = `/api/cameras/${ip}/ptz/move`
+            console.log(`[Tapo PTZ] Full URL: ${baseUrl}${endpoint}`)
+            await api.post(endpoint, { x, y })
         },
 
         async ptzStep(ip: string, direction: number): Promise<void> {
-            await api.post(`/api/cameras/${ip}/ptz/step`, { direction })
+            const endpoint = `/api/cameras/${ip}/ptz/step`
+            console.log(`[Tapo PTZ] Full URL: ${baseUrl}${endpoint}`)
+            await api.post(endpoint, { direction })
         },
 
         async ptzCalibrate(ip: string): Promise<void> {

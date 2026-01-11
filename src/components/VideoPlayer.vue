@@ -2,57 +2,146 @@
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { Icon } from '@iconify/vue'
 import Hls from 'hls.js'
-import type { PlaybackMode } from '@/types'
+import { useTapo } from '@/composables/useTapo'
 
 const props = defineProps<{
   src: string
-  mode?: PlaybackMode
+  mode?: string
   autoplay?: boolean
-  showPtz?: boolean
+  muted?: boolean
+  controls?: boolean
+  poster?: string
+  cameraIp?: string  // Camera IP for Tapo API
+  onPtz?: (command: 'up' | 'down' | 'left' | 'right' | 'zoom_in' | 'zoom_out') => Promise<void>
 }>()
 
 const emit = defineEmits<{
   error: [error: Error]
   playing: []
-  modeChange: [mode: PlaybackMode]
+  modeChange: [mode: string]
 }>()
 
 const videoRef = ref<HTMLVideoElement | null>(null)
-const containerRef = ref<HTMLDivElement | null>(null)
-const currentMode = ref<PlaybackMode>(props.mode || 'webrtc')
-const isPlaying = ref(false)
+const containerRef = ref<HTMLElement | null>(null)
+
+// State
 const isLoading = ref(true)
 const error = ref<string | null>(null)
+const isPlaying = ref(false)
+const isMuted = ref(props.muted || false)
+const volume = ref(isMuted.value ? 0 : 1)
 const isFullscreen = ref(false)
 const showControls = ref(true)
-const volume = ref(1)
-const isMuted = ref(false)
 const connectionState = ref<string>('')
-const showPtzPanel = ref(false)
-const ptzLoading = ref(false)
+
+// Playback Modes
+const currentMode = ref(props.mode || 'webrtc')
+const modes = ['webrtc', 'mse', 'hls', 'mjpeg']
 
 // WebRTC
 let pc: RTCPeerConnection | null = null
+
+// MSE
 let ws: WebSocket | null = null
 
 // HLS
 let hls: Hls | null = null
 
-const modes: PlaybackMode[] = ['webrtc', 'mse', 'hls', 'mjpeg']
-
+// PTZ
+const showPtzPanel = ref(false)
+const ptzLoading = ref(false)
+// Using empty string for relative URL (current origin)
 const baseUrl = computed(() => '')
 
+// Tapo API for PTZ
+const { tapoApiUrl, tapoCameraIp, tapoUsername, tapoPassword, isConfigured: isTapoConfigured } = useTapo()
+
+// Effective camera IP: use prop if provided, otherwise fall back to configured default
+const effectiveCameraIp = computed(() => props.cameraIp || tapoCameraIp.value)
+
+type PtzCommand = 'up' | 'down' | 'left' | 'right' | 'zoom_in' | 'zoom_out' | 'home'
+
+// Direction mapping for Tapo PTZ step
+const directionMap: Record<string, number> = {
+  up: 0,
+  right: 90,
+  down: 180,
+  left: 270,
+}
+
 // PTZ Controls
-type PtzCommand = 'left' | 'right' | 'up' | 'down' | 'zoom_in' | 'zoom_out' | 'home'
 
 async function sendPtzCommand(command: PtzCommand) {
+  // Debug prop availability each time
+  console.log('[VideoPlayer] sendPtzCommand called. command:', command, 'Has onPtz:', !!props.onPtz)
+
+  if (props.onPtz) {
+    console.log('[VideoPlayer] Using custom PTZ handler')
+    ptzLoading.value = true
+    try {
+      if (command === 'home') {
+        console.warn('Home command not supported by custom handler')
+      } else {
+        await props.onPtz(command)
+      }
+    } finally {
+      ptzLoading.value = false
+    }
+    return
+  }
+
+  // Use Tapo API if configured and cameraIp is available (from prop or configured default)
+  if (isTapoConfigured.value && effectiveCameraIp.value) {
+    const direction = directionMap[command]
+    if (direction === undefined) {
+      console.warn(`[VideoPlayer] Command ${command} not supported for Tapo PTZ`)
+      return
+    }
+    
+    const fullUrl = `${tapoApiUrl.value}/api/cameras/${effectiveCameraIp.value}/ptz/step`
+    console.log('[VideoPlayer] Tapo PTZ. Full URL:', fullUrl)
+    
+    ptzLoading.value = true
+    try {
+      const response = await fetch(fullUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Tapo-Username': tapoUsername.value,
+          'X-Tapo-Password': tapoPassword.value,
+        },
+        body: JSON.stringify({ direction })
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Tapo PTZ failed: ${response.status} ${response.statusText}`)
+      }
+      console.log('[VideoPlayer] Tapo PTZ success')
+    } catch (e) {
+      console.error('[VideoPlayer] Tapo PTZ error:', e)
+    } finally {
+      ptzLoading.value = false
+    }
+    return
+  }
+
+  // Fallback to go2rtc PTZ (legacy)
+  const url = `${baseUrl.value}/api/ptz?src=${encodeURIComponent(props.src)}&command=${command}`
+  const fullUrl = `${window.location.origin}${url}`
+  console.log('[VideoPlayer] Default PTZ Handler. Full URL:', fullUrl)
+
   ptzLoading.value = true
   try {
-    const response = await fetch(`${baseUrl.value}/api/ptz?src=${encodeURIComponent(props.src)}&command=${command}`, {
+    const response = await fetch(url, {
       method: 'POST'
     })
+    
     if (!response.ok) {
-      console.error('PTZ command failed:', response.statusText)
+      if (response.status === 404) {
+        console.warn('PTZ API not found (404). This stream might not support PTZ or go2rtc API is unavailable.')
+      } else {
+        throw new Error(`PTZ failed: ${response.statusText}`)
+      }
     }
   } catch (e) {
     console.error('PTZ error:', e)
@@ -331,7 +420,7 @@ function play() {
   }
 }
 
-function switchMode(mode: PlaybackMode) {
+function switchMode(mode: string) {
   currentMode.value = mode
   emit('modeChange', mode)
   play()

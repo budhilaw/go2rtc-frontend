@@ -7,7 +7,9 @@ export interface Stream {
 }
 
 export interface Producer {
-    url: string
+    url?: string
+    remote_addr?: string
+    format_name?: string
     medias?: Media[]
     receivers?: number
     recv?: number
